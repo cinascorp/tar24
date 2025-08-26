@@ -1,0 +1,182 @@
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden; background: #000;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #viewer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #inputContainer {
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 1000;
+      width: 90%;
+      margin: 0 25px;
+    }
+    textarea {
+      width: 100%; padding: 0.5em;
+      background: linear-gradient(to bottom, #444, #222);
+      color: #fff; border: 1px solid #666; border-radius: 10px;
+      font-size: 18px; margin-bottom: 10px;
+      resize: none;
+      overflow: hidden;
+      min-height: 40px;
+      box-sizing: border-box;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    button {
+      border: none; 
+      border-radius: 10px;
+      padding: 0.5em 2em; 
+      font-size: 18px; 
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.6), 0 2px 4px rgba(0,0,0,0.4);
+      transition: transform 0.1s,
+      box-shadow 0.2s;
+      width: 120px;
+      margin: 0 20px;
+    }
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.6); -2 3px 6px rgba(0,0,0,0.5);
+    }
+    button:hover {
+      box-shadow: 0 6px 12px rgba(0,0,0,0.7), -2 3px 6px rgba(0,0,0,0.5);
+    }
+    #openButton {
+      background: linear-gradient(to bottom, #c71585, #8b008b);
+      color: #fff;
+    }
+    #browseButton {
+      background: linear-gradient(to bottom, #0077b6, #005f8b);
+      color: #fff;
+    }
+    #preview {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    iframe {
+      width: 100%; height: 100%; border: none;
+      background: #fff; display: none;
+    }
+    pre {
+      background: #111; color: #0f0; padding: 10px;
+      overflow: auto; max-height: 80vh; width: 90%;
+      border-radius: 5px;
+    }
+    img {
+      max-width: 90%; max-height: 80vh; object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer">
+    <div id="preview"></div>
+    <div id="inputContainer">
+      <textarea id="urlInput" placeholder="Enter URL or Select File"></textarea>
+      <div style="display: flex; justify-content: center; gap: 20px;">
+        <input type="file" id="fileInput" />
+        <button id="browseButton" onclick="loadURL()">Browser</button>
+        <button id="openButton" onclick="document.getElementById('fileInput').click()">Explorer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const urlInput = document.getElementById('urlInput');
+    const preview = document.getElementById('preview');
+    const inputContainer = document.getElementById('inputContainer');
+
+    fileInput.addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      reader.onload = function (e) {
+        const content = e.target.result;
+        inputContainer.style.display = 'none';
+
+        if (ext === 'html' || ext === 'htm') {
+          preview.innerHTML = `<iframe srcdoc="${content.replace(/"/g, '&quot;')}" style="display:block;"></iframe>`;
+        } else if (['txt', 'log', 'js', 'css', 'json'].includes(ext)) {
+          preview.innerHTML = `<pre>${content}</pre>`;
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+          preview.innerHTML = `<img src="${URL.createObjectURL(file)}" />`;
+        } else {
+          preview.innerHTML = `<p>Selected File: <strong>${file.name}</strong></p>`;
+        }
+        fileInput.value = '';
+      };
+
+      if (['txt', 'html', 'htm', 'js', 'css', 'json', 'log'].includes(ext)) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function loadURL() {
+      let url = urlInput.value.trim();
+      if (url) {
+        inputContainer.style.display = 'none';
+        try {
+          if (!url.match(/^[a-zA-Z]+:\/\//)) {
+            if (url.includes('.') || url.includes('/')) {
+              url = 'https://' + url;
+            } else {
+              url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+            }
+          }
+          const link = document.createElement('a');
+          link.href = url;
+          link.click();
+          preview.innerHTML = `<iframe src="${url}" style="display:block;"></iframe>`;
+          urlInput.value = '';
+        } catch (e) {
+          preview.innerHTML = `<p>Invalid URL: <strong>${url}</strong></p>`;
+        }
+      }
+    }
+
+    preview.addEventListener('click', function (e) {
+      if (e.target === preview && preview.innerHTML) {
+        preview.innerHTML = '';
+        inputContainer.style.display = 'flex';
+        urlInput.value = '';
+        fileInput.value = '';
+      }
+    });
+
+    urlInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        loadURL();
+      }
+    });
+
+    urlInput.addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = `${this.scrollHeight}px`;
+      this.scrollTop = this.scrollHeight;
+    });
+  </script>
+  </body>

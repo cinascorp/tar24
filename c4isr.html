@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+    <title>C4ISR System Demo - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ff41;
+        }
+        .demo-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00ff41;
+        }
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            border: 1px solid #333;
+        }
+        .demo-button {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .demo-button:hover {
+            background: #00cc33;
+        }
+        .demo-button.danger {
+            background: #ff0000;
+            color: #fff;
+        }
+        .demo-button.warning {
+            background: #ffaa00;
+            color: #000;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #333;
+        }
+        .status.success { background: #006600; }
+        .status.warning { background: #666600; }
+        .status.error { background: #660000; }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .language-selector {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .language-selector select {
+            padding: 10px;
+            font-size: 16px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>馃殌 C4ISR Military Tracking System</h1>
+            <h2>Demo & Test Page</h2>
+            <p>Test the core functionality of the C4ISR system</p>
+        </div>
+
+        <div class="language-selector">
+            <label for="demo-language">Select Language:</label>
+            <select id="demo-language">
+                <option value="en">English</option>
+                <option value="fa">賮丕乇爻蹖</option>
+                <option value="sv">Svenska</option>
+            </select>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-section">
+                <h3>馃寪 Language System</h3>
+                <p>Test multi-language support</p>
+                <button class="demo-button" onclick="testLanguage()">Test Language Change</button>
+                <div id="language-status" class="status">Ready</div>
+            </div>
+
+            <div class="demo-section">
+                <h3>馃摗 Data Sources</h3>
+                <p>Test data source management</p>
+                <button class="demo-button" onclick="testDataSources()">Test Data Sources</button>
+                <div id="data-status" class="status">Ready</div>
+            </div>
+
+            <div class="demo-section">
+                <h3>馃毃 Notifications</h3>
+                <p>Test notification system</p>
+                <button class="demo-button" onclick="testNotifications()">Test Notifications</button>
+                <button class="demo-button warning" onclick="testWarning()">Test Warning</button>
+                <button class="demo-button danger" onclick="testError()">Test Error</button>
+                <div id="notification-status" class="status">Ready</div>
+            </div>
+
+            <div class="demo-section">
+                <h3>馃洝锔� GPS Jamming</h3>
+                <p>Test GPS security features</p>
+                <button class="demo-button" onclick="testGPSJamming()">Test GPS Jamming</button>
+                <button class="demo-button warning" onclick="testStealthMode()">Test Stealth Mode</button>
+                <div id="gps-status" class="status">Ready</div>
+            </div>
+
+            <div class="demo-section">
+                <h3>馃幆 Threat Detection</h3>
+                <p>Test threat detection system</p>
+                <button class="demo-button" onclick="testThreatDetection()">Test Threat Detection</button>
+                <div id="threat-status" class="status">Ready</div>
+            </div>
+
+            <div class="demo-section">
+                <h3>馃椇锔� Map System</h3>
+                <p>Test map functionality</p>
+                <button class="demo-button" onclick="testMapSystem()">Test Map System</button>
+                <div id="map-status" class="status">Ready</div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>馃搳 System Status</h3>
+            <div id="system-status">
+                <p><strong>Language Manager:</strong> <span id="lang-status">Unknown</span></p>
+                <p><strong>Data Sources:</strong> <span id="data-status-text">Unknown</span></p>
+                <p><strong>Notifications:</strong> <span id="notif-status">Unknown</span></p>
+                <p><strong>GPS Jamming:</strong> <span id="gps-status-text">Unknown</span></p>
+                <p><strong>Threat Detection:</strong> <span id="threat-status-text">Unknown</span></p>
+                <p><strong>Map System:</strong> <span id="map-status-text">Unknown</span></p>
+            </div>
+            <button class="demo-button" onclick="checkSystemStatus()">Check System Status</button>
+        </div>
+
+        <div class="demo-section">
+            <h3>馃敡 System Controls</h3>
+            <button class="demo-button" onclick="initializeSystem()">Initialize System</button>
+            <button class="demo-button warning" onclick="shutdownSystem()">Shutdown System</button>
+            <button class="demo-button" onclick="resetSystem()">Reset System</button>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        function testLanguage() {
+            const status = document.getElementById('language-status');
+            const selector = document.getElementById('demo-language');
+            const language = selector.value;
+            
+            try {
+                if (window.languageManager) {
+                    window.languageManager.changeLanguage(language);
+                    status.textContent = `Language changed to ${language}`;
+                    status.className = 'status success';
+                } else {
+                    status.textContent = 'Language Manager not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testDataSources() {
+            const status = document.getElementById('data-status');
+            
+            try {
+                if (window.dataSourceManager) {
+                    const sources = window.dataSourceManager.getAllSourcesStatus();
+                    status.textContent = `Data sources checked: ${Object.keys(sources).length} sources`;
+                    status.className = 'status success';
+                } else {
+                    status.textContent = 'Data Source Manager not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testNotifications() {
+            const status = document.getElementById('notification-status');
+            
+            try {
+                if (window.notificationManager) {
+                    window.notificationManager.show('Demo Test', 'This is a test notification', 'success');
+                    status.textContent = 'Success notification sent';
+                    status.className = 'status success';
+                } else {
+                    status.textContent = 'Notification Manager not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testWarning() {
+            const status = document.getElementById('notification-status');
+            
+            try {
+                if (window.notificationManager) {
+                    window.notificationManager.show('Demo Warning', 'This is a test warning', 'warning');
+                    status.textContent = 'Warning notification sent';
+                    status.className = 'status warning';
+                } else {
+                    status.textContent = 'Notification Manager not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testError() {
+            const status = document.getElementById('notification-status');
+            
+            try {
+                if (window.notificationManager) {
+                    window.notificationManager.show('Demo Error', 'This is a test error', 'danger');
+                    status.textContent = 'Error notification sent';
+                    status.className = 'status error';
+                } else {
+                    status.textContent = 'Notification Manager not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testGPSJamming() {
+            const status = document.getElementById('gps-status');
+            
+            try {
+                if (window.gpsJammingSystem) {
+                    const isActive = window.gpsJammingSystem.toggle();
+                    status.textContent = `GPS Jamming ${isActive ? 'activated' : 'deactivated'}`;
+                    status.className = isActive ? 'status warning' : 'status success';
+                } else {
+                    status.textContent = 'GPS Jamming System not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testStealthMode() {
+            const status = document.getElementById('gps-status');
+            
+            try {
+                if (window.gpsJammingSystem) {
+                    const isActive = window.gpsJammingSystem.toggleStealthMode();
+                    status.textContent = `Stealth Mode ${isActive ? 'activated' : 'deactivated'}`;
+                    status.className = isActive ? 'status warning' : 'status success';
+                } else {
+                    status.textContent = 'GPS Jamming System not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testThreatDetection() {
+            const status = document.getElementById('threat-status');
+            
+            try {
+                if (window.threatDetectionSystem) {
+                    const threatCount = window.threatDetectionSystem.getThreatCount();
+                    status.textContent = `Threat count: ${threatCount}`;
+                    status.className = 'status success';
+                } else {
+                    status.textContent = 'Threat Detection System not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function testMapSystem() {
+            const status = document.getElementById('map-status');
+            
+            try {
+                if (window.mapController) {
+                    status.textContent = 'Map system test completed';
+                    status.className = 'status success';
+                } else {
+                    status.textContent = 'Map Controller not available';
+                    status.className = 'status error';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+            }
+        }
+
+        function checkSystemStatus() {
+            const components = [
+                { name: 'Language Manager', instance: window.languageManager, status: 'lang-status' },
+                { name: 'Data Sources', instance: window.dataSourceManager, status: 'data-status-text' },
+                { name: 'Notifications', instance: window.notificationManager, status: 'notif-status' },
+                { name: 'GPS Jamming', instance: window.gpsJammingSystem, status: 'gps-status-text' },
+                { name: 'Threat Detection', instance: window.threatDetectionSystem, status: 'threat-status-text' },
+                { name: 'Map System', instance: window.mapController, status: 'map-status-text' }
+            ];
+
+            components.forEach(component => {
+                const statusElement = document.getElementById(component.status);
+                if (component.instance) {
+                    if (component.instance.isHealthy && component.instance.isHealthy()) {
+                        statusElement.textContent = 'Healthy';
+                        statusElement.style.color = '#00ff41';
+                    } else {
+                        statusElement.textContent = 'Available';
+                        statusElement.style.color = '#ffaa00';
+                    }
+                } else {
+                    statusElement.textContent = 'Not Available';
+                    statusElement.style.color = '#ff0000';
+                }
+            });
+        }
+
+        function initializeSystem() {
+            alert('System initialization would start here. Check the main application for full functionality.');
+        }
+
+        function shutdownSystem() {
+            alert('System shutdown would occur here. Check the main application for full functionality.');
+        }
+
+        function resetSystem() {
+            location.reload();
+        }
+
+        // Initialize demo page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('C4ISR Demo Page Loaded');
+            checkSystemStatus();
+        });
+    </script>
+</body>
+</html>

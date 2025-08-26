@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AEGIS C4ISR — منو اصلی</title>
+
+<style>
+:root{
+  --bg:#0a0a0a;
+  --card:#363030;
+  --accent:#00ff41;
+  --muted:#bfbfbf
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0}
+html,body{
+  height:100%;
+font-family:Segoe UI,Roboto,system-ui;
+background:linear-gradient(180deg,#071016 0%,#0a0a0a 100%);
+color:#fff
+}
+.container{
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;gap:24px;
+  padding:20px}
+.brand{
+  font-weight:700;
+  font-size:22px;
+  color:var(--accent);
+  text-align:center}
+.buttons{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:center
+}
+.btn{
+  min-width:140px;
+  padding:14px 18px;
+  border-radius:12px;
+  border:2px 
+  solid rgba(255,255,255,0.06);
+  background:linear-gradient(180deg,#111 0%,#0f0f0f 100%);
+  cursor:pointer;
+  font-weight:700}
+
+.btn.uav{border-color:rgba(0, 255, 64, 0.15)}
+.btn.mil{border-color:rgba(255, 0, 0, 0.12)}
+.btn.tar{border-color:rgba(99, 255, 252, 0.12)}
+  
+.lang-toggle{
+  position:fixed;
+  top:10px;
+  right:18px;
+  background:var(--card);
+  padding:8px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.04)}
+  
+.lang-toggle button{
+  background:transparent;
+  border:none;color:var(--muted);
+  padding:4px 5px;
+  cursor:pointer;
+  font-weight:600}
+  
+.footer{
+  position:fixed;
+  bottom:18px;
+  right:18px;
+  color:var(--muted);
+  font-size:13px}
+@media(max-width:600px)
+{
+  .buttons{
+    flex-direction:column;
+    width:100%}.btn{
+      width:100%}
+}
+</style>
+</head>
+<body>
+<div class="lang-toggle" id="langToggle">
+<button data-lang="fa">فارسی</button>
+<button data-lang="en">EN</button>
+</div>
+<div class="container">
+<div class="brand" id="brand">سامانه یکپارچه رصد و فرماندهی</div>
+<div class="buttons">
+<a class="btn tar" id="btnTAR" href="./tar.html">TAR</a>
+<a class="btn mil" id="btnMIL" href="./mil.html">MIL</a>
+<a class="btn uav" id="btnUAV" href="./uav.html">UAV</a>
+<a class="btn uav" href="./adsb.html">ADSB</a>
+<a class="btn uav" href="./c4isr.html">C4ISR-test pge</a>
+<a class="btn uav" href="./3dmap.html">3d-map</a>
+<a class="btn uav" href="./gmp.html">track in Google</a>
+<a class="btn uav" href='./c4.html'>C4ISR</a>
+<a class="btn uav" href="./c4.html">Extra Map Tools</a>
+<a class="btn uav" href="./brz.html">internet & local browser</a>
+
+</dive>
+<div class="footer" id="footer">Developed by Cinascorp ©</div>
+</div>
+<script>
+function setLang(lang){
+document.documentElement.lang = (lang==='en') ? 'en' : 'fa';
+document.getElementById('brand').textContent = (lang==='en') ? 'AEGIS C4ISR — Unified Tracking & Command' : 'سامانه یکپارچه رصد و فرماندهی';
+document.getElementById('btnUAV').href = 'uav.html?lang='+lang;
+document.getElementById('btnMIL').href = 'mil.html?lang='+lang;
+document.getElementById('btnTAR').href = 'tar.html?lang='+lang;
+document.getElementById('footer').textContent = (lang==='en') ? 'Developed by Cinascorp ©' : 'کاری از سینا';
+localStorage.setItem('site_lang', lang);
+}
+document.querySelectorAll('#langToggle button').forEach(btn=>btn.addEventListener('click',e=>setLang(e.target.dataset.lang)));
+const initialLang = new URLSearchParams(location.search).get('lang') || localStorage.getItem('site_lang') || 'fa';
+setLang(initialLang);
+</script>
+</body>
+</html>

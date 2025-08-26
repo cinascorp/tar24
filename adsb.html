@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TAR</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden; background: #000;
+      font-family: 'Segoe UI', sans-serif;
+      touch-action: manipulation;
+    }
+    #viewer {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 90%; z-index: 1;
+    }
+    iframe {
+      width: 100%; height: 100%; border: none;
+    }
+    #buttons {
+      position: absolute; bottom: 0; left: 0;
+      width: 100%; height: 10%; z-index: 10;
+      display: flex; justify-content: space-around; align-items: center;
+      background: #111; user-select: none;
+    }
+    button {
+      flex: 1; margin: 0 5px;
+      background: linear-gradient(to bottom, #369, #111);
+      color: #fff; 
+      border: 1px solid #666; 
+      border-radius: 10px;
+      padding: 0.5em; 
+      font-size: 15px; 
+      font-weight: bold;
+      box-shadow: 0 3px 5px rgba(0,0,0,0.6);
+      cursor: pointer; 
+      height: 80%;
+      transition: transform .1s, background .2s;
+    }
+    button:active {
+      transform: scale(0.95);
+      background: linear-gradient(to bottom, #333, #111);
+    }
+    button:hover {
+      background: linear-gradient(to bottom, #555, #333);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="viewer">
+    <iframe id="webframe"
+      src="https://globe.airplanes.live/?lat=32.0&lon=53.0&zoom=5&esri=true&unmanned=true">
+    </iframe>
+  </div>
+
+  <div id="buttons">
+    <button id="btn-sub" onclick="showSubSites()">فرعی</button>
+    <button id="btn-lang" onclick="toggleLang()">فـــا</button>
+    <button id="btn-adsb" onclick="loadADSB()">پروازها</button>
+    <button id="btn-tar" onclick="goToTAR()">تــــار</button>
+    <button id="btn-help" onclick="showHelp()">راهنما</button>
+  </div>
+
+  <script>
+    let isFarsi = true;
+
+    const subSites = [
+      { title_fa: 'گوگل',      title_en: 'Google',        url: 'https://www.google.com' },
+      { title_fa: 'داک داک گو', title_en: 'DuckDuckGo',    url: 'https://duckduckgo.com' },
+      { title_fa: 'تلوبیون',   title_en: 'Telewebion',    url: 'https://www.telewebion.com' },
+      { title_fa: 'تلگرام وب',  title_en: 'Telegram Web',  url: 'https://web.telegram.org' },
+      { title_fa: 'یوتیوب',     title_en: 'YouTube',       url: 'https://www.youtube.com' },
+      { title_fa: 'اینستاگرام', title_en: 'Instagram',     url: 'https://www.instagram.com' },
+      { title_fa: 'فلایت رادار ۲۴', title_en: 'Flight Radar 24', url: 'https://www.flightradar24.com' }
+    ];
+
+    function loadADSB() {
+      document.getElementById('webframe').src =
+        'https://globe.airplanes.live/?lat=55.0&lon=36.0&zoom=5&esri=true&unmanned=true';
+    }
+    
+    function goToTAR() {
+      document.getElementById('webframe').src =
+        'https://adsb.lol/?lat=55.0&lon=36.0&zoom=5&esri=true&unmanned=true';
+    }
+
+    function showSubSites() {
+      let listItems = subSites.map(s =>
+        `<li><a href="${s.url}" target="_blank">${isFarsi? s.title_fa: s.title_en}</a></li>`
+      ).join('');
+      const html = `
+        <!DOCTYPE html>
+        <html lang="${isFarsi?'fa':'en'}"><head>
+          <meta charset="UTF-8"><title>${isFarsi?'فرعی':'Subsites'}</title>
+          <style>body{background:#000;color:#fff;font-family:sans-serif;padding:1em;}
+            ul{list-style:none;padding:0;}
+            li{margin:0.5em 0;}
+            a{color:#4af;text-decoration:none;} a:hover{text-decoration:underline;}
+          </style>
+        </head><body>
+          <h2>${isFarsi?'لیست سایت ها':'Subsites'}</h2>
+          <ul>${listItems}</ul>
+        </body></html>`;
+      document.getElementById('webframe').srcdoc = html;
+    }
+
+    function showHelp() {
+      const html = `
+        <!DOCTYPE html>
+        <html lang="fa"><head>
+          <meta charset="UTF-8"><title>راهنما</title>
+          <style>body{background:#000;color:#fff;font-family:sans-serif;padding:1em;}
+            h1{font-size:1.4em;} p{margin-top:1em;}
+          </style>
+        </head><body>
+          <h1>به زودی ...</h1>
+          <p>برای بازگشت به نقشه اصلی، از دکمه «پروازها» استفاده کنید.</p>
+          <br><br>
+          <strong>توسعه دهنده : Cinascorp ©</strong>
+        </body></html>`;
+      document.getElementById('webframe').srcdoc = html;
+    }
+
+    function toggleLang() {
+      isFarsi = !isFarsi;
+      document.documentElement.lang = isFarsi ? 'fa' : 'en';
+      document.getElementById('btn-sub').innerText = isFarsi ? 'فرعی' : 'Subsites';
+      document.getElementById('btn-lang').innerText = isFarsi ? 'EN' : 'FA';
+      document.getElementById('btn-adsb').innerText = isFarsi ? 'پروازها' : 'ADSB';
+      document.getElementById('btn-tar').innerText = isFarsi ? 'تار' : 'TAR';
+      document.getElementById('btn-help').innerText = isFarsi ? 'راهنما' : 'Help';
+    }
+  </script>
+
+</body>
+</html>

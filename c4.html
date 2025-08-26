@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	
+	<title>Military Air Traffic Operations Center - Real-Time ADS-B Monitoring</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
+	<style>
+		:root {
+			--bg: #0a0a0a;
+			--panel: #1a1a1a;
+			--text: #00ff00;
+			--border: #333333;
+			--muted: #666666;
+			--threat: #ff0000;
+			--safe: #00ff00;
+			--warning: #ffff00;
+			--info: #0080ff;
+			--drone: #000000;
+			--military: #ff6600;
+			--civilian: #00ccff;
+			--commercial: #ffcc00;
+			--private: #cc66ff;
+		}
+		
+		html, body {
+			height: 100%;
+			background: var(--bg);
+			color: var(--text);
+			font-family: 'Courier New', monospace;
+		}
+		
+		#map {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+		}
+		
+		.ol-zoom, .ol-rotate {
+			filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+		}
+		
+		/* Military Control Panel */
+		.military-panel {
+			position: fixed;
+			top: 10px;
+			left: 10px;
+			z-index: 1200;
+			background: var(--panel);
+			border: 2px solid var(--border);
+			border-radius: 5px;
+			padding: 15px;
+			min-width: 350px;
+			max-width: 450px;
+			box-shadow: 0 0 20px rgba(0,255,0,0.3);
+		}
+		
+		.threat-level {
+			font-size: 1.1em;
+			font-weight: bold;
+			padding: 8px 12px;
+			border-radius: 3px;
+			margin-bottom: 15px;
+			text-align: center;
+			border: 1px solid var(--border);
+		}
+		
+		.threat-level.low { background: var(--safe); color: #000; }
+		.threat-level.medium { background: var(--warning); color: #000; }
+		.threat-level.high { background: var(--threat); color: #fff; }
+		.threat-level.critical { background: #800000; color: #fff; animation: pulse 1s infinite; }
+		
+		@keyframes pulse {
+			0% { opacity: 1; }
+			50% { opacity: 0.5; }
+			100% { opacity: 1; }
+		}
+		
+		.control-button {
+			width: 100%;
+			margin: 5px 0;
+			padding: 10px;
+			border-radius: 3px;
+			border: 1px solid var(--border);
+			font-weight: bold;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			background: var(--panel);
+			color: var(--text);
+		}
+		
+		.control-button:hover {
+			background: var(--border);
+			transform: scale(1.02);
+		}
+		
+		.btn-jam { border-color: var(--warning); }
+		.btn-capture { border-color: var(--info); }
+		.btn-redirect { border-color: var(--safe); }
+		.btn-emergency { border-color: var(--threat); }
+		
+		/* Aircraft List */
+		.aircraft-list {
+			max-height: 300px;
+			overflow-y: auto;
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			padding: 10px;
+			background: rgba(0,0,0,0.3);
+		}
+		
+		.aircraft-item {
+			padding: 8px;
+			margin: 5px 0;
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			background: rgba(0,0,0,0.5);
+			font-size: 0.9em;
+		}
+		
+		.aircraft-item.military { border-left: 4px solid var(--military); }
+		.aircraft-item.civilian { border-left: 4px solid var(--civilian); }
+		.aircraft-item.commercial { border-left: 4px solid var(--commercial); }
+		.aircraft-item.private { border-left: 4px solid var(--private); }
+		.aircraft-item.drone { border-left: 4px solid var(--drone); }
+		
+		/* Status Indicators */
+		.status-indicator {
+			display: inline-block;
+			width: 12px;
+			height: 12px;
+			border-radius: 50%;
+			margin-right: 8px;
+		}
+		
+		.status-active { background: var(--safe); }
+		.status-warning { background: var(--warning); }
+		status-danger { background: var(--threat); }
+		
+		/* Legend */
+		.legend {
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 5px;
+			padding: 15px;
+			z-index: 1000;
+			min-width: 250px;
+		}
+		
+		.legend-item {
+			display: flex;
+			align-items: center;
+			margin: 5px 0;
+			font-size: 0.9em;
+		}
+		
+		.legend-swatch {
+			width: 20px;
+			height: 20px;
+			border-radius: 3px;
+			margin-right: 10px;
+			border: 1px solid var(--border);
+		}
+		
+		/* Infrared Camera Panel */
+		.ir-panel {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			z-index: 1200;
+			background: var(--panel);
+			border: 2px solid var(--border);
+			border-radius: 5px;
+			padding: 15px;
+			width: 300px;
+		}
+		
+		.ir-feed {
+			width: 100%;
+			height: 200px;
+			background: #000;
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--text);
+			font-size: 0.9em;
+		}
+		
+		/* Data Source Status */
+		.data-source-status {
+			position: fixed;
+			bottom: 10px;
+			left: 10px;
+			z-index: 1200;
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 5px;
+			padding: 10px;
+			font-size: 0.8em;
+		}
+		
+		.source-indicator {
+			display: inline-block;
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			margin-right: 5px;
+		}
+		
+		.source-active { background: var(--safe); }
+		.source-inactive { background: var(--threat); }
+		
+		/* Altitude Color Spectrum */
+		.altitude-spectrum {
+			position: fixed;
+			top: 50%;
+			right: 10px;
+			transform: translateY(-50%);
+			z-index: 1200;
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 5px;
+			padding: 10px;
+			width: 30px;
+		}
+		
+		.altitude-bar {
+			width: 100%;
+			height: 200px;
+			background: linear-gradient(to top, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ffff, #0080ff, #8000ff);
+			border-radius: 3px;
+			position: relative;
+		}
+		
+		.altitude-labels {
+			position: absolute;
+			left: -60px;
+			top: 0;
+			width: 50px;
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			font-size: 0.7em;
+			color: var(--text);
+		}
+	</style>
+</head>
+<body>
+	<div id="map"></div>
+	
+	<!-- Military Control Panel -->
+	<div class="military-panel">
+		<h5 class="mb-3">MILITARY AIR TRAFFIC CONTROL</h5>
+		
+		<div class="mb-3">
+			<div id="threatLevel" class="threat-level low">THREAT LEVEL: LOW</div>
+		</div>
+		
+		<div class="mb-3">
+			<h6 class="mb-2">System Controls</h6>
+			<button class="control-button btn-jam" onclick="activateJamming()">ACTIVATE JAMMING</button>
+			<button class="control-button btn-capture" onclick="initiateCapture()">INITIATE CAPTURE</button>
+			<button class="control-button btn-redirect" onclick="redirectToSafeZone()">REDIRECT TO SAFE ZONE</button>
+			<button class="control-button btn-emergency" onclick="emergencyProtocol()">EMERGENCY PROTOCOL</button>
+		</div>
+		
+		<div class="mb-3">
+			<h6 class="mb-2">Threat Assessment</h6>
+			<div class="table-responsive">
+				<table class="table table-sm table-dark">
+					<thead>
+						<tr>
+							<th>Level</th>
+							<th>Count</th>
+							<th>Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr><td>Low</td><td id="threatLow">0</td><td><span class="badge bg-success">Safe</span></td></tr>
+						<tr><td>Medium</td><td id="threatMedium">0</td><td><span class="badge bg-warning">Monitor</span></td></tr>
+						<tr><td>High</td><td id="threatHigh">0</td><td><span class="badge bg-danger">Engage</span></td></tr>
+						<tr><td>Critical</td><td id="threatCritical">0</td><td><span class="badge bg-dark text-white">Emergency</span></td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		
+		<div class="mb-3">
+			<h6 class="mb-2">Active Aircraft</h6>
+			<div id="aircraftList" class="aircraft-list">
+				<div class="text-center text-muted">Loading aircraft data...</div>
+			</div>
+		</div>
+		
+		<div class="mb-3">
+			<h6 class="mb-2">System Status</h6>
+			<div class="d-flex justify-content-between">
+				<span>ADS-B Feed:</span>
+				<span id="adsbStatus" class="source-indicator source-active"></span>
+			</div>
+			<div class="d-flex justify-content-between">
+				<span>FlightRadar24:</span>
+				<span id="fr24Status" class="source-indicator source-active"></span>
+			</div>
+			<div class="d-flex justify-content-between">
+				<span>IR Cameras:</span>
+				<span id="irStatus" class="source-indicator source-active"></span>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Infrared Camera Panel -->
+	<div class="ir-panel">
+		<h6 class="mb-2">NASA Infrared Cameras</h6>
+		<div class="ir-feed" id="irFeed">
+			IR FEED ACTIVE<br>
+			Monitoring thermal signatures
+		</div>
+		<div class="mt-2">
+			<small class="text-muted">Thermal detection active</small><br>
+			<small class="text-muted">No unauthorized heat sources detected</small>
+		</div>
+	</div>
+	
+	<!-- Altitude Color Spectrum -->
+	<div class="altitude-spectrum">
+		<div class="altitude-bar">
+			<div class="altitude-labels">
+				<span>10,000m</span>
+				<span>8,000m</span>
+				<span>6,000m</span>
+				<span>4,000m</span>
+				<span>2,000m</span>
+				<span>0m</span>
+			</div>
+		</div>
+		<div class="text-center mt-2">
+			<small>Altitude Spectrum</small>
+		</div>
+	</div>
+	
+	<!-- Legend -->
+	<div class="legend">
+		<h6 class="mb-2">Aircraft Classification</h6>
+		<div class="legend-item">
+			<div class="legend-swatch" style="background: var(--military);"></div>
+			<span>Military Aircraft</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-swatch" style="background: var(--civilian);"></div>
+			<span>Civilian Aircraft</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-swatch" style="background: var(--commercial);"></div>
+			<span>Commercial Aircraft</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-swatch" style="background: var(--private);"></div>
+			<span>Private Aircraft</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-swatch" style="background: var(--drone);"></div>
+			<span>Drones/UAVs</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-swatch" style="background: var(--threat);"></div>
+			<span>Threat Aircraft</span>
+		</div>
+	</div>
+	
+	<!-- Data Source Status -->
+	<div class="data-source-status">
+		<div class="mb-2"><strong>Data Sources</strong></div>
+		<div id="dataSourceStatus">
+			<div>ADS-B.lol: <span class="source-indicator source-active"></span> Active</div>
+			<div>FlightRadar24: <span class="source-indicator source-active"></span> Active</div>
+			<div>IR Cameras: <span class="source-indicator source-active"></span> Active</div>
+		</div>
+		<div class="mt-2">
+			<small>Last Update: <span id="lastUpdate">--</span></small>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+	
+	<script>
+		// Military Air Traffic Control System
+		class MilitaryAirTrafficControl {
+			constructor() {
+				this.map = null;
+				this.aircraftLayer = null;
+				this.threatLayer = null;
+				this.aircraft = new Map();
+				this.threats = new Map();
+				this.dataSources = {
+					adsb: { active: true, lastUpdate: null, data: [] },
+					fr24: { active: true, lastUpdate: null, data: [] },
+					ir: { active: true, lastUpdate: null, data: [] }
+				};
+				this.threatLevel = 'low';
+				this.jammingActive = false;
+				this.captureActive = false;
+				this.updateInterval = null;
+				this.batchSize = 1500;
+				this.currentBatch = 0;
+				
+				this.init();
+			}
+			
+			init() {
+				this.initializeMap();
+				this.initializeLayers();
+				this.startRealTimeMonitoring();
+				this.updateStatus();
+			}
+			
+			initializeMap() {
+				// Initialize OpenLayers map with military-grade tiles
+				this.map = new ol.Map({
+					target: 'map',
+					layers: [
+						new ol.layer.Tile({
+							source: new ol.source.OSM()
+						})
+					],
+					view: new ol.View({
+						center: ol.proj.fromLonLat([51.3890, 35.6892]), // Iran center
+						zoom: 6
+					})
+				});
+			}
+			
+			initializeLayers() {
+				// Aircraft layer with altitude-based coloring
+				this.aircraftLayer = new ol.layer.Vector({
+					source: new ol.source.Vector(),
+					style: (feature) => this.getAircraftStyle(feature)
+				});
+				
+				// Threat layer for hostile aircraft
+				this.threatLayer = new ol.layer.Vector({
+					source: new ol.source.Vector(),
+					style: new ol.style.Style({
+						image: new ol.style.Circle({
+							radius: 15,
+							fill: new ol.style.Fill({color: 'rgba(255,0,0,0.8)'}),
+							stroke: new ol.style.Stroke({color: '#ff0000', width: 3})
+						})
+					})
+				});
+				
+				this.map.addLayer(this.aircraftLayer);
+				this.map.addLayer(this.threatLayer);
+			}
+			
+			getAircraftStyle(feature) {
+				const aircraft = feature.get('aircraft');
+				const altitude = aircraft.altitude || 0;
+				const type = aircraft.type || 'unknown';
+				
+				// Determine color based on altitude and type
+				let color;
+				if (type === 'drone') {
+					color = '#000000'; // Black for drones
+				} else if (type === 'military') {
+					color = '#ff6600'; // Orange for military
+				} else {
+					// Altitude-based color spectrum (red to purple)
+					const normalizedAlt = Math.min(altitude / 10000, 1);
+					if (normalizedAlt < 0.125) color = '#ff0000'; // Red (0-1250m)
+					else if (normalizedAlt < 0.25) color = '#ff8000'; // Orange (1250-2500m)
+					else if (normalizedAlt < 0.375) color = '#ffff00'; // Yellow (2500-3750m)
+					else if (normalizedAlt < 0.5) color = '#80ff00'; // Light Green (3750-5000m)
+					else if (normalizedAlt < 0.625) color = '#00ff00'; // Green (5000-6250m)
+					else if (normalizedAlt < 0.75) color = '#00ffff'; // Cyan (6250-7500m)
+					else if (normalizedAlt < 0.875) color = '#0080ff'; // Blue (7500-8750m)
+					else color = '#8000ff'; // Purple (8750-10000m+)
+				}
+				
+				return new ol.style.Style({
+					image: new ol.style.Circle({
+						radius: type === 'drone' ? 6 : 8,
+						fill: new ol.style.Fill({color: color}),
+						stroke: new ol.style.Stroke({color: '#ffffff', width: 2})
+					})
+				});
+			}
+			
+			startRealTimeMonitoring() {
+				// Start real-time data collection
+				this.updateInterval = setInterval(() => {
+					this.fetchADSData();
+					this.fetchFlightRadarData();
+					this.updateIRCameras();
+					this.updateThreatAssessment();
+					this.updateDisplay();
+				}, 5000); // Update every 5 seconds
+			}
+			
+			async fetchADSData() {
+				try {
+					// Fetch military aircraft data from adsb.lol
+					const response = await fetch('https://api.adsb.lol/v2/mil', {
+						method: 'GET',
+						headers: {
+							'accept': 'application/json',
+							'User-Agent': 'Military-Air-Traffic-Control/1.0'
+						}
+					});
+					
+					if (response.ok) {
+						const data = await response.json();
+						this.processADSData(data);
+						this.dataSources.adsb.lastUpdate = new Date();
+						this.dataSources.adsb.active = true;
+					} else {
+						this.dataSources.adsb.active = false;
+					}
+				} catch (error) {
+					console.warn('ADS-B data fetch failed:', error);
+					this.dataSources.adsb.active = false;
+				}
+			}
+			
+			async fetchFlightRadarData() {
+				try {
+					// Fetch civilian aircraft data from FlightRadar24
+					const response = await fetch('https://data-cloud.flightradar24.com/zones/fcgi/feed.js', {
+						method: 'GET',
+						headers: {
+							'accept': 'application/json',
+							'User-Agent': 'Military-Air-Traffic-Control/1.0'
+						}
+					});
+					
+					if (response.ok) {
+						const data = await response.json();
+						this.processFlightRadarData(data);
+						this.dataSources.fr24.lastUpdate = new Date();
+						this.dataSources.fr24.active = true;
+					} else {
+						this.dataSources.fr24.active = false;
+					}
+				} catch (error) {
+					console.warn('FlightRadar24 data fetch failed:', error);
+					this.dataSources.fr24.active = false;
+				}
+			}
+			
+			processADSData(data) {
+				if (!data || !Array.isArray(data)) return;
+				
+				data.forEach(aircraft => {
+					if (this.isValidAircraft(aircraft)) {
+						const processedAircraft = this.processAircraft(aircraft, 'military');
+						this.aircraft.set(processedAircraft.id, processedAircraft);
+					}
+				});
+			}
+			
+			processFlightRadarData(data) {
+				if (!data || !data.aircraft) return;
+				
+				Object.values(data.aircraft).forEach(aircraft => {
+					if (this.isValidAircraft(aircraft)) {
+						const processedAircraft = this.processAircraft(aircraft, 'civilian');
+						this.aircraft.set(processedAircraft.id, processedAircraft);
+					}
+				});
+			}
+			
+			isValidAircraft(aircraft) {
+				return aircraft && 
+					   (aircraft.lat || aircraft.latitude) && 
+					   (aircraft.lon || aircraft.longitude) &&
+					   (aircraft.alt || aircraft.altitude !== undefined);
+			}
+			
+			processAircraft(aircraft, source) {
+				const lat = aircraft.lat || aircraft.latitude;
+				const lon = aircraft.lon || aircraft.longitude;
+				const alt = aircraft.alt || aircraft.altitude || 0;
+				const speed = aircraft.speed || aircraft.gs || 0;
+				const heading = aircraft.track || aircraft.heading || 0;
+				
+				// Determine aircraft type
+				let type = 'civilian';
+				if (source === 'military') {
+					type = 'military';
+				} else if (aircraft.icao && aircraft.icao.startsWith('A')) {
+					type = 'military'; // Military ICAO codes
+				} else if (alt < 1000 && speed < 200) {
+					type = 'drone'; // Low altitude, low speed = likely drone
+				} else if (aircraft.icao && aircraft.icao.startsWith('C')) {
+					type = 'commercial'; // Commercial ICAO codes
+				} else if (aircraft.icao && aircraft.icao.startsWith('P')) {
+					type = 'private'; // Private ICAO codes
+				}
+				
+				return {
+					id: aircraft.icao || aircraft.id || `AC-${Date.now()}-${Math.random()}`,
+					type: type,
+					lat: lat,
+					lon: lon,
+					altitude: alt,
+					speed: speed,
+					heading: heading,
+					source: source,
+					timestamp: new Date(),
+					threatLevel: this.calculateThreatLevel(aircraft, type)
+				};
+			}
+			
+			calculateThreatLevel(aircraft, type) {
+				if (type === 'military') return 'high';
+				if (type === 'drone') return 'medium';
+				
+				const alt = aircraft.alt || aircraft.altitude || 0;
+				const speed = aircraft.speed || aircraft.gs || 0;
+				
+				// High altitude, high speed = potential threat
+				if (alt > 8000 && speed > 800) return 'medium';
+				if (alt > 10000 && speed > 1000) return 'high';
+				
+				return 'low';
+			}
+			
+			updateIRCameras() {
+				// Simulate infrared camera monitoring
+				this.dataSources.ir.lastUpdate = new Date();
+				
+				// Check for thermal signatures
+				const thermalThreats = Array.from(this.aircraft.values())
+					.filter(ac => ac.type === 'drone' && ac.altitude < 500);
+				
+				if (thermalThreats.length > 0) {
+					document.getElementById('irFeed').innerHTML = `
+						THERMAL THREATS DETECTED<br>
+						${thermalThreats.length} low-altitude targets<br>
+						<small style="color: #ff0000;">ENGAGING COUNTERMEASURES</small>
+					`;
+				} else {
+					document.getElementById('irFeed').innerHTML = `
+						IR FEED ACTIVE<br>
+						No thermal threats detected<br>
+						<small style="color: #00ff00;">CLEAR</small>
+					`;
+				}
+			}
+			
+			updateThreatAssessment() {
+				const threats = Array.from(this.aircraft.values())
+					.filter(ac => ac.threatLevel === 'high');
+				
+				const threatCounts = {
+					low: 0,
+					medium: 0,
+					high: 0,
+					critical: 0
+				};
+				
+				this.aircraft.forEach(aircraft => {
+					threatCounts[aircraft.threatLevel]++;
+				});
+				
+				// Determine overall threat level
+				if (threatCounts.critical > 0) this.threatLevel = 'critical';
+				else if (threatCounts.high > 5) this.threatLevel = 'high';
+				else if (threatCounts.high > 0 || threatCounts.medium > 10) this.threatLevel = 'medium';
+				else this.threatLevel = 'low';
+				
+				// Update threat level display
+				const threatLevelElement = document.getElementById('threatLevel');
+				threatLevelElement.textContent = `THREAT LEVEL: ${this.threatLevel.toUpperCase()}`;
+				threatLevelElement.className = `threat-level ${this.threatLevel}`;
+				
+				// Update threat counts
+				document.getElementById('threatLow').textContent = threatCounts.low;
+				document.getElementById('threatMedium').textContent = threatCounts.medium;
+				document.getElementById('threatHigh').textContent = threatCounts.high;
+				document.getElementById('threatCritical').textContent = threatCounts.critical;
+			}
+			
+			updateDisplay() {
+				this.updateMap();
+				this.updateAircraftList();
+				this.updateStatus();
+			}
+			
+			updateMap() {
+				// Clear existing features
+				this.aircraftLayer.getSource().clear();
+				this.threatLayer.getSource().clear();
+				
+				// Add aircraft to map in batches
+				const aircraftArray = Array.from(this.aircraft.values());
+				const startIndex = this.currentBatch * this.batchSize;
+				const endIndex = Math.min(startIndex + this.batchSize, aircraftArray.length);
+				const currentBatch = aircraftArray.slice(startIndex, endIndex);
+				
+				currentBatch.forEach(aircraft => {
+					const feature = new ol.Feature({
+						geometry: new ol.geom.Point(ol.proj.fromLonLat([aircraft.lon, aircraft.lat])),
+						aircraft: aircraft
+					});
+					
+					if (aircraft.threatLevel === 'high') {
+						this.threatLayer.getSource().addFeature(feature);
+					} else {
+						this.aircraftLayer.getSource().addFeature(feature);
+					}
+				});
+				
+				// Rotate batches for performance
+				if (endIndex >= aircraftArray.length) {
+					this.currentBatch = 0;
+				} else {
+					this.currentBatch++;
+				}
+			}
+			
+			updateAircraftList() {
+				const aircraftList = document.getElementById('aircraftList');
+				const aircraftArray = Array.from(this.aircraft.values());
+				
+				if (aircraftArray.length === 0) {
+					aircraftList.innerHTML = '<div class="text-center text-muted">No aircraft detected</div>';
+					return;
+				}
+				
+				// Sort by threat level and timestamp
+				aircraftArray.sort((a, b) => {
+					const threatOrder = { 'critical': 4, 'high': 3, 'medium': 2, 'low': 1 };
+					return threatOrder[b.threatLevel] - threatOrder[a.threatLevel] || 
+						   b.timestamp - a.timestamp;
+				});
+				
+				// Display first 20 aircraft
+				const displayAircraft = aircraftArray.slice(0, 20);
+				aircraftList.innerHTML = '';
+				
+				displayAircraft.forEach(aircraft => {
+					const aircraftItem = document.createElement('div');
+					aircraftItem.className = `aircraft-item ${aircraft.type}`;
+					aircraftItem.innerHTML = `
+						<div class="d-flex justify-content-between align-items-center">
+							<strong>${aircraft.id}</strong>
+							<span class="badge ${aircraft.threatLevel === 'high' ? 'bg-danger' : 
+												  aircraft.threatLevel === 'medium' ? 'bg-warning' : 'bg-success'}">
+								${aircraft.threatLevel.toUpperCase()}
+							</span>
+						</div>
+						<div>Type: ${aircraft.type.toUpperCase()} | Source: ${aircraft.source}</div>
+						<div>Location: ${aircraft.lat.toFixed(4)}°N, ${aircraft.lon.toFixed(4)}°E</div>
+						<div>Altitude: ${Math.round(aircraft.altitude)}m | Speed: ${Math.round(aircraft.speed)}km/h</div>
+						<div class="mt-2">
+							<button class="btn btn-sm btn-outline-warning me-1" onclick="atc.jamAircraft('${aircraft.id}')">Jam</button>
+							<button class="btn btn-sm btn-outline-info me-1" onclick="atc.captureAircraft('${aircraft.id}')">Capture</button>
+							<button class="btn btn-sm btn-outline-success" onclick="atc.redirectAircraft('${aircraft.id}')">Redirect</button>
+						</div>
+					`;
+					aircraftList.appendChild(aircraftItem);
+				});
+				
+				// Show total count
+				if (aircraftArray.length > 20) {
+					const totalItem = document.createElement('div');
+					totalItem.className = 'text-center text-muted mt-2';
+					totalItem.innerHTML = `<small>Showing 20 of ${aircraftArray.length} aircraft</small>`;
+					aircraftList.appendChild(totalItem);
+				}
+			}
+			
+			updateStatus() {
+				// Update data source status
+				document.getElementById('adsbStatus').className = 
+					`source-indicator ${this.dataSources.adsb.active ? 'source-active' : 'source-inactive'}`;
+				document.getElementById('fr24Status').className = 
+					`source-indicator ${this.dataSources.fr24.active ? 'source-active' : 'source-inactive'}`;
+				document.getElementById('irStatus').className = 
+					`source-indicator ${this.dataSources.ir.active ? 'source-active' : 'source-inactive'}`;
+				
+				// Update last update time
+				const lastUpdate = new Date();
+				document.getElementById('lastUpdate').textContent = lastUpdate.toLocaleTimeString();
+			}
+			
+			// Counter-measure functions
+			jamAircraft(aircraftId) {
+				const aircraft = this.aircraft.get(aircraftId);
+				if (aircraft) {
+					aircraft.status = 'jammed';
+					aircraft.speed *= 0.3;
+					alert(`Aircraft ${aircraftId} jammed successfully`);
+					this.updateDisplay();
+				}
+			}
+			
+			captureAircraft(aircraftId) {
+				const aircraft = this.aircraft.get(aircraftId);
+				if (aircraft) {
+					aircraft.status = 'captured';
+					aircraft.threatLevel = 'low';
+					alert(`Aircraft ${aircraftId} captured successfully`);
+					this.updateDisplay();
+				}
+			}
+			
+			redirectAircraft(aircraftId) {
+				const aircraft = this.aircraft.get(aircraftId);
+				if (aircraft) {
+					// Redirect to safe zone (desert area)
+					aircraft.targetLat = 24.7136;
+					aircraft.targetLon = 46.6753;
+					aircraft.status = 'redirecting';
+					alert(`Aircraft ${aircraftId} redirected to safe zone`);
+				}
+			}
+		}
+		
+		// Global ATC instance
+		let atc;
+		
+		// Initialize system when page loads
+		document.addEventListener('DOMContentLoaded', function() {
+			atc = new MilitaryAirTrafficControl();
+		});
+		
+		// Counter-measure control functions
+		function activateJamming() {
+			if (!atc.jammingActive) {
+				atc.jammingActive = true;
+				alert('JAMMING ACTIVATED - All unauthorized communications disrupted');
+				event.target.textContent = 'JAMMING ACTIVE';
+				event.target.style.background = '#ff0000';
+			} else {
+				atc.jammingActive = false;
+				alert('JAMMING DEACTIVATED');
+				event.target.textContent = 'ACTIVATE JAMMING';
+				event.target.style.background = '';
+			}
+		}
+		
+		function initiateCapture() {
+			if (!atc.captureActive) {
+				atc.captureActive = true;
+				alert('CAPTURE PROTOCOL INITIATED - Attempting to seize control of hostile aircraft');
+				event.target.textContent = 'CAPTURING...';
+				event.target.style.background = '#0080ff';
+			}
+		}
+		
+		function redirectToSafeZone() {
+			alert('REDIRECTING CAPTURED AIRCRAFT TO DESERT SAFE ZONES');
+		}
+		
+		function emergencyProtocol() {
+			alert('EMERGENCY PROTOCOL ACTIVATED - All systems engaging maximum countermeasures');
+			activateJamming();
+			initiateCapture();
+		}
+	</script>
+</body>
+</html>
