@@ -1,8 +1,7 @@
-
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>TAR</title>
+	<title>MIL - Military Intelligence System</title>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
 	<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&v=beta&libraries=maps3d"></script>
@@ -214,6 +213,67 @@
 		left: 10px; 
 		  
 		}
+
+		/* AI Assistant button */
+		#aiAssistantToggle {
+			position: fixed;
+			top: 110px;
+			right: 60px;
+			z-index: 1100;
+			background: var(--panel);
+			border: 1px solid var(--border);
+			color: var(--text);
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		/* AI Modal */
+		.ai-modal {
+			display: none;
+			position: fixed;
+			z-index: 2000;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0,0,0,0.7);
+		}
+
+		.ai-modal-content {
+			background-color: var(--panel);
+			margin: 5% auto;
+			padding: 20px;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			width: 80%;
+			max-width: 600px;
+			color: var(--text);
+		}
+
+		.ai-close {
+			color: var(--text);
+			float: right;
+			font-size: 28px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		.ai-close:hover {
+			color: var(--muted);
+		}
+
+		.flight-param {
+			margin: 5px 0;
+			padding: 5px;
+			background: rgba(255,255,255,0.1);
+			border-radius: 3px;
+		}
 	</style>
 </head>
 <body>
@@ -222,9 +282,26 @@
 	  </button>
 
 	<button id="mapLayerToggle" class="map-layer-toggle" title="Toggle Map Layer">L</button>
-	<button id="copilotToggle" class="map-layer-toggle" title="Open Copilot" data-bs-toggle="offcanvas" data-bs-target="#copilotPanel">AI</button>
+	<button id="aiAssistantToggle" class="map-layer-toggle" title="AI Assistant" onclick="openAIAssistant()">AI</button>
 
 	<div id="map"> </div>
+
+	<!-- AI Modal -->
+	<div id="aiModal" class="ai-modal">
+		<div class="ai-modal-content">
+			<span class="ai-close" onclick="closeAIModal()">&times;</span>
+			<h2>AI Flight Analysis</h2>
+			<div id="selectedFlightInfo">
+				<p>Please select a flight first by clicking on a marker on the map.</p>
+			</div>
+			<div id="flightParameters" style="display: none;">
+				<h3>Flight Parameters:</h3>
+				<div id="parametersList"></div>
+				<br>
+				<button class="btn btn-primary" onclick="askAIAboutFlight()">Ask Grok.ai About This Flight</button>
+			</div>
+		</div>
+	</div>
 
 	<div id="popup" style="display:none;">
 		<div>
@@ -246,7 +323,7 @@
 
 	<div class="offcanvas offcanvas-end" tabindex="-1" id="rightMenu" aria-labelledby="rightMenuLabel">
 		<div class="offcanvas-header">
-			<h5 id="rightMenuLabel">Settings & Information</h5>
+			<h5 id="rightMenuLabel">Military Intelligence - Settings & Information</h5>
 			<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 		</div>
 		<div class="offcanvas-body">
@@ -355,21 +432,113 @@
 		</div>
 	</div>
 
-	<!-- Copilot offcanvas panel -->
-	<div class="offcanvas offcanvas-start" tabindex="-1" id="copilotPanel" aria-labelledby="copilotLabel">
-		<div class="offcanvas-header">
-			<h5 id="copilotLabel">Copilot</h5>
-			<button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-		</div>
-		<div class="offcanvas-body p-0" style="height: calc(100% - 56px);">
-			<iframe id="copilotFrame" src="about:blank" style="width: 100%; height: 100%; border: 0;"></iframe>
-			<div class="p-2 small-muted">If chat fails to load, <a class="link-warning" id="copilotExternalLink" href="#" target="_blank" rel="noopener">open Copilot in a new tab</a>.</div>
-		</div>
-	</div>
-
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
 	<script>
+	// Global variable to store selected flight data
+	let selectedFlightData = null;
+
+	function openAIAssistant() {
+		document.getElementById('aiModal').style.display = 'block';
+		updateAIModal();
+	}
+
+	function closeAIModal() {
+		document.getElementById('aiModal').style.display = 'none';
+	}
+
+	function updateAIModal() {
+		const selectedFlightInfo = document.getElementById('selectedFlightInfo');
+		const flightParameters = document.getElementById('flightParameters');
+		
+		if (selectedFlightData) {
+			selectedFlightInfo.innerHTML = `<h4>Selected Flight: ${selectedFlightData.callsign || selectedFlightData.reg || selectedFlightData.hex}</h4>`;
+			flightParameters.style.display = 'block';
+			
+			const parametersList = document.getElementById('parametersList');
+			parametersList.innerHTML = `
+				<div class="flight-param"><strong>Hex ID:</strong> ${selectedFlightData.hex || 'N/A'}</div>
+				<div class="flight-param"><strong>Callsign:</strong> ${selectedFlightData.callsign || 'N/A'}</div>
+				<div class="flight-param"><strong>Registration:</strong> ${selectedFlightData.reg || 'N/A'}</div>
+				<div class="flight-param"><strong>Aircraft Type:</strong> ${selectedFlightData.acType || 'N/A'}</div>
+				<div class="flight-param"><strong>Latitude:</strong> ${selectedFlightData.lat || 'N/A'}</div>
+				<div class="flight-param"><strong>Longitude:</strong> ${selectedFlightData.lon || 'N/A'}</div>
+				<div class="flight-param"><strong>Altitude (MSL):</strong> ${selectedFlightData.alt_m ? selectedFlightData.alt_m + ' m' : 'N/A'}</div>
+				<div class="flight-param"><strong>Altitude (AGL):</strong> ${selectedFlightData.agl_m ? selectedFlightData.agl_m + ' m' : 'N/A'}</div>
+				<div class="flight-param"><strong>Speed:</strong> ${selectedFlightData.spd_kmh ? selectedFlightData.spd_kmh + ' km/h' : 'N/A'}</div>
+				<div class="flight-param"><strong>Heading:</strong> ${selectedFlightData.heading ? selectedFlightData.heading + '°' : 'N/A'}</div>
+				<div class="flight-param"><strong>Category:</strong> ${selectedFlightData.category || 'N/A'}</div>
+				<div class="flight-param"><strong>Timestamp:</strong> ${selectedFlightData.ts ? new Date(selectedFlightData.ts).toISOString() : 'N/A'}</div>
+				<div class="flight-param"><strong>Ground Speed:</strong> ${selectedFlightData.spd_kmh || 'N/A'}</div>
+				<div class="flight-param"><strong>Vertical Speed:</strong> ${selectedFlightData.verticalSpeed || 'N/A'}</div>
+				<div class="flight-param"><strong>Squawk:</strong> ${selectedFlightData.squawk || 'N/A'}</div>
+				<div class="flight-param"><strong>Origin:</strong> ${selectedFlightData.origin || 'N/A'}</div>
+				<div class="flight-param"><strong>Destination:</strong> ${selectedFlightData.destination || 'N/A'}</div>
+				<div class="flight-param"><strong>On Ground:</strong> ${selectedFlightData.onGround ? 'Yes' : 'No'}</div>
+				<div class="flight-param"><strong>Emergency:</strong> ${selectedFlightData.emergency || 'No'}</div>
+			`;
+		} else {
+			selectedFlightInfo.innerHTML = '<p>Please select a flight first by clicking on a marker on the map.</p>';
+			flightParameters.style.display = 'none';
+		}
+	}
+
+	function askAIAboutFlight() {
+		if (!selectedFlightData) {
+			alert('Please select a flight first.');
+			return;
+		}
+		
+		// Create comprehensive flight data string
+		const flightInfo = `
+Flight Analysis Request:
+
+Basic Information:
+- Hex ID: ${selectedFlightData.hex || 'N/A'}
+- Callsign: ${selectedFlightData.callsign || 'N/A'}
+- Registration: ${selectedFlightData.reg || 'N/A'}
+- Aircraft Type: ${selectedFlightData.acType || 'N/A'}
+
+Position & Movement:
+- Latitude: ${selectedFlightData.lat || 'N/A'}
+- Longitude: ${selectedFlightData.lon || 'N/A'}
+- Altitude MSL: ${selectedFlightData.alt_m ? selectedFlightData.alt_m + ' meters' : 'N/A'}
+- Altitude AGL: ${selectedFlightData.agl_m ? selectedFlightData.agl_m + ' meters' : 'N/A'}
+- Speed: ${selectedFlightData.spd_kmh ? selectedFlightData.spd_kmh + ' km/h' : 'N/A'}
+- Heading: ${selectedFlightData.heading ? selectedFlightData.heading + ' degrees' : 'N/A'}
+
+Technical Data:
+- Category: ${selectedFlightData.category || 'N/A'}
+- Timestamp: ${selectedFlightData.ts ? new Date(selectedFlightData.ts).toISOString() : 'N/A'}
+- Squawk Code: ${selectedFlightData.squawk || 'N/A'}
+- Emergency Status: ${selectedFlightData.emergency || 'None'}
+- On Ground: ${selectedFlightData.onGround ? 'Yes' : 'No'}
+
+Route Information:
+- Origin: ${selectedFlightData.origin || 'N/A'}
+- Destination: ${selectedFlightData.destination || 'N/A'}
+
+Please analyze this flight data and provide insights about the aircraft, its mission profile, potential threat assessment, and any relevant operational characteristics. Consider military significance if applicable.
+		`.trim();
+		
+		// Create Grok.ai URL with the flight data
+		const grokUrl = `https://grok.ai/?q=${encodeURIComponent(flightInfo)}`;
+		
+		// Open in new tab
+		window.open(grokUrl, '_blank');
+		
+		// Close the modal
+		closeAIModal();
+	}
+
+	// Close modal when clicking outside
+	window.onclick = function(event) {
+		const modal = document.getElementById('aiModal');
+		if (event.target == modal) {
+			closeAIModal();
+		}
+	}
+
 	(function() {
 		const TILE_URLS = [
 			// Dark raster basemap without API key; fallback to OSM default if blocked
@@ -484,9 +653,6 @@
 		const aircraftFrame = document.getElementById('aircraft-frame');
 		const aircraftImageContainer = document.getElementById('aircraft-image-container');
 		const aircraftLinks = document.getElementById('aircraft-links');
-		const copilotPanelEl = document.getElementById('copilotPanel');
-		const copilotFrame = document.getElementById('copilotFrame');
-		const copilotExternalLink = document.getElementById('copilotExternalLink');
 
 		// Menu toggle icon swap
 		const menuToggleBtn = document.getElementById('menuToggle');
@@ -516,17 +682,6 @@
 			}
 			updateDroneLegendIcons();
 			updateMarkersAndTracks();
-		});
-
-		// Copilot panel: lazy-load and provide context link
-		copilotPanelEl.addEventListener('shown.bs.offcanvas', () => {
-			if (!copilotFrame.src || copilotFrame.src === 'about:blank') {
-				try { copilotFrame.src = 'https://Grok.com/'; } catch(e) {}
-			}
-			const bounds = boundsFromView();
-			const selected = Array.from(selectedFlights).join(', ') || 'none';
-			const context = `Current viewport: lat ${bounds.minLat.toFixed(2)}..${bounds.maxLat.toFixed(2)}, lon ${bounds.minLon.toFixed(2)}..${bounds.maxLon.toFixed(2)}; selected flights: ${selected}`;
-			copilotExternalLink.href = 'https://Grok.com/?q=' + encodeURIComponent(' analyze flight and location data and explain in persian if any parameter exist' + context);
 		});
 
 		// Helpers
@@ -937,6 +1092,10 @@
 				if (layer !== markerLayer) return;
 				const d = feature.get('data');
 				if (!d) return;
+				
+				// Store selected flight data for AI assistant
+				selectedFlightData = { ...d, category: categorize(d) };
+				
 				if (selectedFlights.has(d.hex)) selectedFlights.delete(d.hex); else selectedFlights.add(d.hex);
 				const category = categorize(d);
 				const title = d.callsign || d.reg || d.hex;
@@ -960,6 +1119,9 @@
 						<button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" onclick="toggleFlightSelection('${d.hex}')">
 							${isSelected ? '✓ Selected' : 'Select Flight'}
 						</button>
+						<button class="btn btn-sm btn-outline-info ms-2" onclick="openAIAssistant()">
+							🤖 Ask AI
+						</button>
 					</div>
 					<div class="small-muted mt-1">Click map to close. Track shown with altitude spectrum.</div>
 				`;
@@ -977,11 +1139,11 @@
 			return `https://premium.flightradar24.com/${flightPart}/${idPart}/3d`;
 		}
 
-			function getAircraftGalleryUrl(f) {
-		if (!f.acType) return null;
-		// Fixed URL to point to specific aircraft photos instead of main page
-		return `https://www.jetphotos.com/showphotos.php?aircraft=${encodeURIComponent(f.acType)}`;
-	}
+		function getAircraftGalleryUrl(f) {
+			if (!f.acType) return null;
+			// Fixed URL to point to the aircraft type info page instead of main page
+			return `https://www.jetphotos.com/showphotos.php?aircraft=${encodeURIComponent(f.acType)}`;
+		}
 
 		function showAircraftGallery(f, url) {
 			if (!url) { aircraftImageContainer.style.display = 'none'; return; }
