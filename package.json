@@ -1,0 +1,95 @@
+{
+  "name": "c4isr-military-tracking-system",
+  "version": "2.0.0",
+  "description": "Advanced military-grade flight tracking and analysis system for C4ISR operations",
+  "main": "c4isr-v2.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000",
+    "test": "echo \"No tests specified\" && exit 0",
+    "build": "echo \"No build process required\" && exit 0",
+    "lint": "echo \"No linting configured\" && exit 0"
+  },
+  "keywords": [
+    "c4isr",
+    "military",
+    "tracking",
+    "flight",
+    "radar",
+    "ads-b",
+    "threat-detection",
+    "gps-jamming",
+    "stealth",
+    "defense",
+    "surveillance",
+    "intelligence"
+  ],
+  "author": "C4ISR Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/c4isr-military-tracking-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/c4isr-military-tracking-system/issues"
+  },
+  "homepage": "https://github.com/your-org/c4isr-military-tracking-system#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "Chrome >= 90",
+    "Firefox >= 88",
+    "Safari >= 14",
+    "Edge >= 90"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "peerDependencies": {},
+  "bundledDependencies": [],
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "c4isr-v2.html",
+    "js/",
+    "styles/",
+    "README-v2.md",
+    "LICENSE"
+  ],
+  "directories": {
+    "lib": "js",
+    "test": "tests",
+    "docs": "docs"
+  },
+  "config": {
+    "port": 8000,
+    "host": "localhost"
+  },
+  "preferGlobal": false,
+  "bin": {},
+  "man": [],
+  "contributors": [
+    {
+      "name": "C4ISR Development Team",
+      "email": "dev@c4isr-system.com"
+    }
+  ],
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/your-org"
+  }
+}
