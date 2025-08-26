@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>MIL - Tactical Air Radar</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
+	<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&v=beta&libraries=maps3d"></script>
+	<style>
+		html, body { height: 100%; margin: 0; }
+		#map { position: absolute; inset: 0 0 0 0; }
+		.map-layer-toggle { position: absolute; top: 10px; right: 10px; z-index: 1000; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(0,0,0,0.6); color: #fff; }
+		#popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); min-width: 260px; }
+		#popup-closer { cursor: pointer; float: right; }
+		.badge { border: 1px solid rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 10px; font-size: 12px; }
+		.small-muted { font-size: 12px; color: #bbb; }
+	</style>
+</head>
+<body>
+	<div id="map"></div>
+	<button id="mapLayerToggle" class="map-layer-toggle" title="Toggle Map Layer">L</button>
+	<button id="aiButton" class="map-layer-toggle" style="right: 56px;" title="Analyze in Grok">AI</button>
+
+	<div id="popup" style="display:none;">
+		<div><span id="popup-closer"> ✕</span></div>
+		<div id="popup-content"></div>
+		<div id="aircraft-image-container" style="display:none; margin-top: 10px; text-align: center;">
+			<iframe id="aircraft-frame" style="width: 100%; height: 240px; border-radius: 5px; border: 0;" title="Aircraft photo gallery"></iframe>
+			<div id="aircraft-links" style="margin-top: 5px;"></div>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+	<script>
+		const COLORS = { military: '#ff3b30' };
+		function metersToFeet(m) { return Math.round(m * 3.28084); }
+
+		const map = new ol.Map({
+			target: 'map',
+			layers: [
+				new ol.layer.Tile({ source: new ol.source.OSM() })
+			],
+			view: new ol.View({ center: ol.proj.fromLonLat([51.33, 35.69]), zoom: 6 })
+		});
+
+		const markerLayer = new ol.layer.Vector({ source: new ol.source.Vector() });
+		map.addLayer(markerLayer);
+
+		const popupEl = document.getElementById('popup');
+		const popupCloser = document.getElementById('popup-closer');
+		const popupContent = document.getElementById('popup-content');
+		const popup = new ol.Overlay({ element: popupEl, autoPan: { animation: { duration: 250 } } });
+		map.addOverlay(popup);
+		popupCloser.addEventListener('click', () => { popup.setPosition(undefined); popupEl.style.display = 'none'; });
+
+		const aircraftFrame = document.getElementById('aircraft-frame');
+		const aircraftImageContainer = document.getElementById('aircraft-image-container');
+		const aircraftLinks = document.getElementById('aircraft-links');
+
+		let flightsByHex = new Map();
+		let tracksByHex = new Map();
+		let selectedFlights = new Set();
+
+		const DRONE_SVG = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 10a2 2 0 100 4 2 2 0 000-4zm-7-2l3 1 2-1 1 2-1 2-2-1-3 1 1-3-1-2zm14 0l-3 1-2-1-1 2 1 2 2-1 3 1-1-3 1-2zM5 17l3-1 2 1 1-2-1-2-2 1-3-1 1 3-1 2zm14 0l-3-1-2 1-1-2 1-2 2 1 3-1-1 3 1 2z"/></svg>')}`;
+		const HELI_SVG = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffe34d"><path d="M3 12h10a4 4 0 110 8H8a5 5 0 01-5-5v-3zm14-6h-4a1 1 0 110-2h9a1 1 0 110 2h-3v5h-2V6z"/></svg>')}`;
+		const AIRPLANE_SVG = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>')}`;
+		const FIGHTER_SVG = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2l3 5h5l-4 4 2 9-6-4-6 4 2-9-4-4h5z"/></svg>')}`;
+
+		function categorize(f) {
+			const t = (f.acType||'').toUpperCase();
+			if (t.includes('DRON') || t.includes('UAV') || t === 'QUAD') return 'drone';
+			if (t.includes('HELI')) return 'helicopter';
+			if ((f.military===true) || (f.callsign||'').startsWith('MIL')) return 'military';
+			return 'civil';
+		}
+
+		function styleFor(f) {
+			const category = categorize(f);
+			let iconSrc = AIRPLANE_SVG;
+			let color = '#8ec7ff';
+			if (category === 'drone') { iconSrc = DRONE_SVG; color = '#fff'; }
+			else if (category === 'helicopter') { iconSrc = HELI_SVG; }
+			else if (category === 'military') { iconSrc = FIGHTER_SVG; color = COLORS.military; }
+			return new ol.style.Style({ image: new ol.style.Icon({ src: iconSrc, scale: 1.0, color: color, rotation: (f.heading||0) * Math.PI / 180 }) });
+		}
+
+		async function fetchFR24(params) {
+			const urls = [
+				`https://data-cloud.flightradar24.com/zones/fcgi/js?${params}`,
+				`https://data-live.flightradar24.com/zones/fcgi/feed.js?${params}`
+			];
+			for (const u of urls) {
+				try {
+					const res = await fetch(u);
+					const txt = await res.text();
+					const jsonStart = txt.indexOf('{');
+					if (jsonStart >= 0) return JSON.parse(txt.substring(jsonStart));
+				} catch(e) { /* try next */ }
+			}
+			return {};
+		}
+
+		async function loadFlights() {
+			const bounds = map.getView().calculateExtent(map.getSize());
+			const [minX, minY, maxX, maxY] = ol.proj.transformExtent(bounds, 'EPSG:3857', 'EPSG:4326');
+			const params = new URLSearchParams({
+				faa: '1', sat: '1', mlat: '1', flarm: '1', adsb: '1', gnd: '1', air: '1', vehicles: '1', gliders: '1', estimated: '1',
+				bounds: `${minY},${maxY},${minX},${maxX}`
+			}).toString();
+			const data = await fetchFR24(params);
+			const features = [];
+			const byHex = new Map();
+			const tracks = new Map();
+			for (const k in data) {
+				if (k === 'full_count' || k === 'version') continue;
+				const v = data[k];
+				if (!Array.isArray(v) || v.length < 19) continue;
+				const [hex, lat, lon, heading, alt_ft, spd_kts, squawk, radar, acType, reg, ts, origin, dest, flightNum, onGround, vSpeed, callsign, unknown, airline] = v;
+				const f = { hex, lat: +lat, lon: +lon, heading: +heading, alt_ft: +alt_ft, spd_kts: +spd_kts, squawk, radar, acType, reg, ts: +ts, origin, dest, flightNum, onGround: !!onGround, vSpeed: +vSpeed, callsign, unknown, airline };
+				byHex.set(hex, f);
+				if (!tracks.has(hex)) tracks.set(hex, []);
+				tracks.get(hex).push({ lon: f.lon, lat: f.lat, alt_m: Math.round((f.alt_ft||0) * 0.3048), heading: f.heading, ts: f.ts });
+				const feat = new ol.Feature({ geometry: new ol.geom.Point(ol.proj.fromLonLat([f.lon, f.lat])), hex, data: f });
+				feat.setStyle(styleFor(f));
+				features.push(feat);
+			}
+			flightsByHex = byHex;
+			tracksByHex = tracks;
+			markerLayer.getSource().clear();
+			markerLayer.getSource().addFeatures(features);
+			setTimeout(loadFlights, 10000);
+		}
+		loadFlights();
+
+		function makeFR24Link(f) {
+			const flightPart = (f.callsign || '').replace(/\s+/g,'');
+			const idPart = f.hex;
+			return `https://www.flightradar24.com/${flightPart ? flightPart+'/' : ''}${idPart}`;
+		}
+
+		function getAircraftGalleryUrl(f) {
+			// Prefer registration for specificity, fallback to aircraft type
+			if (f.reg) return `https://www.jetphotos.com/photo/keyword/${encodeURIComponent(f.reg)}`;
+			if (f.acType) return `https://www.jetphotos.com/photo/keyword/${encodeURIComponent(f.acType)}`;
+			return null;
+		}
+
+		function showAircraftGallery(f) {
+			const url = getAircraftGalleryUrl(f);
+			if (!url) { aircraftImageContainer.style.display = 'none'; return; }
+			aircraftFrame.src = url;
+			aircraftLinks.innerHTML = '';
+			const a = document.createElement('a');
+			a.href = url;
+			a.target = '_blank';
+			a.rel = 'noopener';
+			a.className = 'btn btn-sm btn-outline-warning';
+			a.textContent = 'Open Photo Gallery';
+			aircraftLinks.appendChild(a);
+			aircraftImageContainer.style.display = 'block';
+		}
+
+		map.on('singleclick', (evt) => {
+			map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
+				if (layer !== markerLayer) return;
+				const d = feature.get('data');
+				if (!d) return;
+				if (selectedFlights.has(d.hex)) selectedFlights.delete(d.hex); else selectedFlights.add(d.hex);
+				const category = categorize(d);
+				const title = d.callsign || d.reg || d.hex;
+				const link = makeFR24Link(d);
+				popupContent.innerHTML = `
+					<div class="d-flex justify-content-between align-items-center">
+						<strong>${title}</strong>
+						<span class="badge">${category.toUpperCase()}</span>
+					</div>
+					<div class="small-muted">Hex: ${d.hex}${d.acType ? ' • Type: ' + d.acType : ''}${d.reg ? ' • Reg: ' + d.reg : ''}</div>
+					<div>Lat: ${d.lat.toFixed(4)} • Lon: ${d.lon.toFixed(4)}</div>
+					<div>Alt: ${d.alt_ft ? d.alt_ft + ' ft (' + metersToFeet(d.alt_ft*0.3048) + ' ft)' : '—'}</div>
+					<div>Speed: ${d.spd_kts ? d.spd_kts + ' kt' : '—'} • Heading: ${d.heading ?? '—'}°</div>
+					<div class="mt-1">FR24: <a class="link-warning" href="${link}" target="_blank" rel="noopener">${link}</a></div>
+				`;
+				popupEl.style.display = 'block';
+				popup.setPosition(evt.coordinate);
+				showAircraftGallery(d);
+			});
+		});
+
+		function buildGrokPromptFromFlight(f) {
+			const rows = [
+				`Hex ICAO: ${f.hex}`,
+				`Latitude: ${f.lat}`,
+				`Longitude: ${f.lon}`,
+				`Heading (deg): ${f.heading}`,
+				`Altitude (ft): ${f.alt_ft}`,
+				`Speed (kts): ${f.spd_kts}`,
+				`Squawk: ${f.squawk}`,
+				`Radar: ${f.radar}`,
+				`Aircraft Type: ${f.acType}`,
+				`Registration: ${f.reg}`,
+				`Timestamp (s): ${f.ts}`,
+				`Origin: ${f.origin}`,
+				`Destination: ${f.dest}`,
+				`Flight Number: ${f.flightNum}`,
+				`On Ground: ${f.onGround}`,
+				`Vertical Speed (ft/min): ${f.vSpeed}`,
+				`Callsign: ${f.callsign}`,
+				`Unknown: ${f.unknown}`,
+				`Airline: ${f.airline}`
+			];
+			return `Analyze this flight with 19 parameters from FlightRadar24 and provide insights and potential mission profile. Use Persian for the narrative.\n\n${rows.join('\n')}`;
+		}
+
+		document.getElementById('aiButton').addEventListener('click', () => {
+			const firstHex = selectedFlights.values().next().value;
+			if (!firstHex) { alert('Select a flight on the map, then tap AI.'); return; }
+			const f = flightsByHex.get(firstHex);
+			if (!f) { alert('Flight data not loaded yet.'); return; }
+			const prompt = buildGrokPromptFromFlight(f);
+			const url = 'https://grok.com/?q=' + encodeURIComponent(prompt);
+			window.open(url, '_blank');
+		});
+
+		document.getElementById('mapLayerToggle').addEventListener('click', () => {
+			// Placeholder: could toggle between OSM styles
+		});
+	</script>
+</body>
+</html>

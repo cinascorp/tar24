@@ -238,7 +238,7 @@
 		style="display:none; 
 		margin-top: 10px; 
 		text-align: center;">
-			<iframe id="aircraft-frame" style="width: 100%; height: 240px; border-radius: 5px; border: 0;" title="Aircraft photo gallery" href="https://www.planespotting.be/index.php?page=" >
+			<iframe id="aircraft-frame" style="width: 100%; height: 240px; border-radius: 5px; border: 0;" title="Aircraft photo gallery" src="about:blank">
 			</iframe>
 			<div id="aircraft-links" style="margin-top: 5px;"></div>
 		</div>
@@ -487,6 +487,7 @@
 		const copilotPanelEl = document.getElementById('copilotPanel');
 		const copilotFrame = document.getElementById('copilotFrame');
 		const copilotExternalLink = document.getElementById('copilotExternalLink');
+		const copilotToggleBtn = document.getElementById('copilotToggle');
 
 		// Menu toggle icon swap
 		const menuToggleBtn = document.getElementById('menuToggle');
@@ -978,8 +979,9 @@
 		}
 
 		function getAircraftGalleryUrl(f) {
-			if (!f.acType) return null;
-			return `https://planespotting.be/${encodeURIComponent(f.acType)}`;
+			if (f.reg) return `https://www.jetphotos.com/photo/keyword/${encodeURIComponent(f.reg)}`;
+			if (f.acType) return `https://www.jetphotos.com/photo/keyword/${encodeURIComponent(f.acType)}`;
+			return null;
 		}
 
 		function showAircraftGallery(f, url) {
@@ -1048,6 +1050,42 @@
 			}
 			return features;
 		}
+
+		function buildGrokPromptFromFlight(f) {
+			const rows = [
+				`Hex ICAO: ${f.hex ?? 'N/A'}`,
+				`Latitude: ${f.lat ?? 'N/A'}`,
+				`Longitude: ${f.lon ?? 'N/A'}`,
+				`Heading (deg): ${f.heading ?? 'N/A'}`,
+				`Altitude (ft): ${f.alt_ft ?? (f.alt_m ? Math.round(f.alt_m*3.28084) : 'N/A')}`,
+				`Speed (kts): ${f.spd_kts ?? (f.spd_kmh ? Math.round(f.spd_kmh/1.852) : 'N/A')}`,
+				`Squawk: ${f.squawk ?? 'N/A'}`,
+				`Radar: ${f.radar ?? 'N/A'}`,
+				`Aircraft Type: ${f.acType ?? 'N/A'}`,
+				`Registration: ${f.reg ?? 'N/A'}`,
+				`Timestamp (s): ${f.ts ? Math.round(f.ts/1000) : 'N/A'}`,
+				`Origin: ${f.origin ?? 'N/A'}`,
+				`Destination: ${f.dest ?? 'N/A'}`,
+				`Flight Number: ${f.flightNum ?? 'N/A'}`,
+				`On Ground: ${typeof f.onGround === 'boolean' ? f.onGround : 'N/A'}`,
+				`Vertical Speed (ft/min): ${f.vSpeed ?? 'N/A'}`,
+				`Callsign: ${f.callsign ?? 'N/A'}`,
+				`Unknown: ${f.unknown ?? 'N/A'}`,
+				`Airline: ${f.airline ?? 'N/A'}`
+			];
+			return `Analyze this flight (19 parameters from FlightRadar24). Provide operational and threat insights. Use Persian for the narrative.\n\n${rows.join('\n')}`;
+		}
+		// Direct AI: open Grok with selected flight
+		copilotToggleBtn.addEventListener('click', (e) => {
+			try { e.preventDefault(); e.stopPropagation(); } catch(_) {}
+			const firstHex = selectedFlights.values().next().value;
+			if (!firstHex) { alert('Select a flight on the map, then tap AI.'); return; }
+			const f = flightsByHex.get(firstHex);
+			if (!f) { alert('Flight data not available yet.'); return; }
+			const prompt = buildGrokPromptFromFlight(f);
+			const url = 'https://grok.com/?q=' + encodeURIComponent(prompt);
+			window.open(url, '_blank');
+		});
 
 		// Load loop
 		async function refresh() {
