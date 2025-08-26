@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AEGIS C4ISR — فهرست صفحات (فارسی)</title>
+<style>
+:root{--bg:#0a0a0a;--card:#1b1f26;--accent:#00ff41;--muted:#bfbfbf}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:Segoe UI,Roboto,system-ui;background:linear-gradient(180deg,#071016 0%,#0a0a0a 100%);color:#fff}
+.container{max-width:980px;margin:0 auto;padding:24px}
+.header{display:flex;align-items:center;justify-content:space-between;margin:18px 0}
+.brand{font-weight:800;color:var(--accent)}
+.search{background:var(--card);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;color:#fff;width:260px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
+.card{display:block;background:linear-gradient(180deg,#111 0%,#0f0f0f 100%);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;color:#fff;text-decoration:none}
+.card small{display:block;color:var(--muted);margin-top:6px}
+.footer{margin:28px 0;color:var(--muted);font-size:13px}
+.lang{display:flex;gap:8px}
+.lang button{background:transparent;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="brand">سامانه یکپارچه رصد و فرماندهی — نسخه فارسی</div>
+    <div class="lang">
+      <button data-lang="fa">فارسی</button>
+      <button data-lang="en">EN</button>
+    </div>
+  </div>
+  <input id="q" class="search" placeholder="جستجو در صفحات…" />
+  <div id="list" class="grid"></div>
+  <div class="footer">تمام حقوق متعلق به Cinascorp © — همه اقدامات این پروژه صرفا جهت پژوهش است و Cinascorp ©® مسئول هرگونه سوء‌استفاده می‌باشد.</div>
+</div>
+<script>
+const PAGES = [
+  { file:'index.html', title_fa:'منو اصلی', title_en:'Main Menu' },
+  { file:'c4.html', title_fa:'C4ISR', title_en:'C4ISR' },
+  { file:'c4isr.html', title_fa:'صفحه آزمایشی C4ISR', title_en:'C4ISR Test' },
+  { file:'c4isr-v2.html', title_fa:'C4ISR نسخه ۲', title_en:'C4ISR v2' },
+  { file:'c4isr-v3.html', title_fa:'C4ISR نسخه ۳', title_en:'C4ISR v3' },
+  { file:'android-c4isr-v3.html', title_fa:'اندروید C4ISR نسخه ۳', title_en:'Android C4ISR v3' },
+  { file:'kali-c4isr-v3.html', title_fa:'Kali C4ISR نسخه ۳', title_en:'Kali C4ISR v3' },
+  { file:'mil.html', title_fa:'سیستم اطلاعات نظامی', title_en:'Military Intelligence' },
+  { file:'tar.html', title_fa:'TAR', title_en:'TAR' },
+  { file:'uav.html', title_fa:'رهگیری پهپاد', title_en:'UAV Tracking' },
+  { file:'adsb.html', title_fa:'پروازها (ADSB)', title_en:'ADSB' },
+  { file:'360.html', title_fa:'نمای ۳۶۰', title_en:'360 View' },
+  { file:'3dmap.html', title_fa:'نقشه سه‌بعدی', title_en:'3D Map' },
+  { file:'gmp.html', title_fa:'رهگیری در گوگل', title_en:'Track in Google' },
+  { file:'launcher.html', title_fa:'لانچر', title_en:'Launcher' },
+  { file:'testpage.html', title_fa:'صفحه آزمایش', title_en:'Test Page' },
+  { file:'brz.html', title_fa:'مرورگر', title_en:'Browser' }
+];
+const list = document.getElementById('list');
+const q = document.getElementById('q');
+const getLang = () => localStorage.getItem('site_lang') || 'fa';
+const setLang = (l) => { localStorage.setItem('site_lang', l); document.documentElement.lang=l; document.documentElement.dir = (l==='fa'?'rtl':'ltr'); render(); };
+
+document.querySelectorAll('.lang button').forEach(b=> b.addEventListener('click', e => setLang(e.target.dataset.lang)));
+
+function render(){
+  const lang = getLang();
+  const filter = (q.value||'').toLowerCase();
+  list.innerHTML = '';
+  PAGES.filter(p=> p.file.endsWith('.html')).forEach(p=>{
+    const title = (lang==='fa'? p.title_fa : p.title_en) || p.file;
+    if(title.toLowerCase().includes(filter) || p.file.toLowerCase().includes(filter)){
+      const a = document.createElement('a');
+      a.className='card';
+      a.href = `${p.file}?lang=${lang}`;
+      a.innerHTML = `${title}<small>${p.file}</small>`;
+      list.appendChild(a);
+    }
+  });
+}
+
+const initial = new URLSearchParams(location.search).get('lang') || getLang();
+setLang(initial);
+</script>
+</body>
+</html>
