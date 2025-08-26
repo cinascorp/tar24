@@ -978,8 +978,17 @@
 		}
 
 		function getAircraftGalleryUrl(f) {
-			if (!f.acType) return null;
-			return `https://planespotting.be/${encodeURIComponent(f.acType)}`;
+			// Prefer registration-specific photo pages; fallback to type search
+			if (f && f.reg) {
+				return `https://www.jetphotos.com/registration/${encodeURIComponent(f.reg)}`;
+			}
+			if (f && f.callsign) {
+				return `https://www.planespotters.net/search?q=${encodeURIComponent(f.callsign)}`;
+			}
+			if (f && f.acType) {
+				return `https://www.planespotters.net/search?q=${encodeURIComponent(f.acType)}`;
+			}
+			return null;
 		}
 
 		function showAircraftGallery(f, url) {
