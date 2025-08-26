@@ -876,61 +876,349 @@
         }
 
         function initializeGlobalFlightTracking() {
-            // Simulate global flight data (would connect to real APIs in production)
-            const globalFlights = [
-                { id: 'IR701', lat: 35.6892, lng: 51.3890, alt: 35000, type: 'commercial', heading: 270 },
-                { id: 'QR102', lat: 35.7, lng: 51.4, alt: 37000, type: 'commercial', heading: 180 },
-                { id: 'UNKNOWN', lat: 35.65, lng: 51.35, alt: 500, type: 'drone', heading: 90, threat: true },
-                { id: 'TK879', lat: 35.72, lng: 51.42, alt: 39000, type: 'commercial', heading: 45 }
-            ];
-
-            globalFlights.forEach(flight => {
-                addFlightToMap(flight);
-            });
-
-            // Start real-time updates
-            setInterval(updateFlightPositions, 5000);
+            // Connect to real FlightRadar24 API for live flight data
+            fetchRealFlightData();
+            
+            // Start real-time updates every 10 seconds
+            setInterval(fetchRealFlightData, 10000);
         }
 
-        function addFlightToMap(flight) {
-            let icon, color;
+        async function fetchRealFlightData() {
+            try {
+                addTerminalOutput('Fetching real-time flight data from FlightRadar24...', 'info');
+                
+                // Get current map bounds for targeted data fetching
+                const bounds = map.getBounds();
+                const north = bounds.getNorth();
+                const south = bounds.getSouth();
+                const east = bounds.getEast();
+                const west = bounds.getWest();
+                
+                // FlightRadar24 API endpoint for live data
+                const apiUrl = `https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=${north},${south},${west},${east}&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=1&stats=0`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'C4ISR-v3-Military-System',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Clear existing markers
+                clearFlightMarkers();
+                
+                // Process real flight data
+                processRealFlightData(data);
+                
+                addTerminalOutput(`Successfully fetched ${Object.keys(data).length - 4} real aircraft`, 'success');
+                
+            } catch (error) {
+                console.error('Error fetching flight data:', error);
+                addTerminalOutput(`Error fetching real flight data: ${error.message}`, 'error');
+                
+                // Fallback to alternative data source
+                await fetchAlternativeFlightData();
+            }
+        }
+
+        function processRealFlightData(data) {
+            let aircraftCount = 0;
+            let droneCount = 0;
+            let threatCount = 0;
+
+            // FlightRadar24 data format: each flight is an array with specific indices
+            Object.keys(data).forEach(key => {
+                if (key === 'full_count' || key === 'version' || key === 'stats' || key === 'callsign_list') {
+                    return; // Skip metadata
+                }
+
+                const flightData = data[key];
+                if (Array.isArray(flightData) && flightData.length >= 18) {
+                    const flight = {
+                        id: flightData[16] || key, // Callsign or hex ID
+                        lat: parseFloat(flightData[1]),
+                        lng: parseFloat(flightData[2]),
+                        alt: parseInt(flightData[4]) || 0,
+                        heading: parseInt(flightData[3]) || 0,
+                        speed: parseInt(flightData[5]) || 0,
+                        aircraft_type: flightData[8] || 'UNKNOWN',
+                        registration: flightData[9] || '',
+                        timestamp: flightData[10] || Date.now(),
+                        origin: flightData[11] || '',
+                        destination: flightData[12] || '',
+                        flight_number: flightData[13] || '',
+                        on_ground: flightData[14] === 1,
+                        vertical_speed: parseInt(flightData[15]) || 0,
+                        callsign: flightData[16] || '',
+                        source: flightData[17] || 0
+                    };
+
+                    // Classify aircraft type and threat level
+                    flight.type = classifyAircraft(flight);
+                    flight.threat = assessThreatLevel(flight);
+
+                    if (flight.lat && flight.lng) {
+                        addRealFlightToMap(flight);
+                        aircraftCount++;
+                        
+                        if (flight.type === 'drone' || flight.type === 'unknown_small') {
+                            droneCount++;
+                        }
+                        
+                        if (flight.threat) {
+                            threatCount++;
+                        }
+                    }
+                }
+            });
+
+            // Update counters with real data
+            updateRealCounters(aircraftCount, droneCount, threatCount);
+        }
+
+        function classifyAircraft(flight) {
+            const altitude = flight.alt;
+            const aircraftType = flight.aircraft_type?.toUpperCase() || '';
+            const speed = flight.speed;
             
-            if (flight.type === 'drone' && flight.threat) {
-                icon = '🚁';
-                color = '#ff1744';
-                threatCount++;
-            } else if (flight.type === 'drone') {
-                icon = '🚁';
-                color = '#ff9800';
-            } else {
-                icon = '✈️';
-                color = '#2196f3';
+            // Drone/UAV detection criteria
+            if (altitude < 1000 && speed < 100) {
+                return 'drone';
+            }
+            
+            // Small aircraft that could be drones
+            if (altitude < 2000 && speed < 150 && !aircraftType.includes('B7') && !aircraftType.includes('A3')) {
+                return 'unknown_small';
+            }
+            
+            // Commercial aircraft
+            if (aircraftType.includes('B7') || aircraftType.includes('A3') || aircraftType.includes('E1') || altitude > 10000) {
+                return 'commercial';
+            }
+            
+            // Military aircraft indicators
+            if (flight.callsign?.includes('MIL') || flight.callsign?.includes('RCH') || aircraftType.includes('F-') || aircraftType.includes('C-')) {
+                return 'military';
+            }
+            
+            // General aviation
+            if (altitude < 10000 && speed < 300) {
+                return 'general_aviation';
+            }
+            
+            return 'unknown';
+        }
+
+        function assessThreatLevel(flight) {
+            // Threat assessment based on multiple factors
+            let threatScore = 0;
+            
+            // Low altitude operations (potential surveillance)
+            if (flight.alt < 500) threatScore += 3;
+            else if (flight.alt < 1000) threatScore += 2;
+            
+            // Slow speed (loitering behavior)
+            if (flight.speed < 50) threatScore += 2;
+            else if (flight.speed < 100) threatScore += 1;
+            
+            // Unknown aircraft type
+            if (flight.type === 'unknown' || flight.type === 'unknown_small') threatScore += 2;
+            
+            // No flight plan/callsign
+            if (!flight.callsign || flight.callsign === '') threatScore += 1;
+            
+            // Proximity to sensitive areas (this would need geographic data)
+            // For now, we'll mark any unidentified low-altitude aircraft as potential threats
+            
+            return threatScore >= 4;
+        }
+
+        async function fetchAlternativeFlightData() {
+            try {
+                // Alternative: Try ADS-B Exchange API
+                addTerminalOutput('Attempting alternative data source...', 'warning');
+                
+                const bounds = map.getBounds();
+                const altUrl = `https://globe.adsbexchange.com/data/aircraft.json`;
+                
+                const response = await fetch(altUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    processADSBExchangeData(data);
+                    addTerminalOutput('Successfully connected to alternative data source', 'success');
+                } else {
+                    throw new Error('Alternative source also unavailable');
+                }
+                
+            } catch (error) {
+                addTerminalOutput('All real-time data sources unavailable. Operating in detection-only mode.', 'error');
+            }
+        }
+
+        function processADSBExchangeData(data) {
+            if (data.aircraft && Array.isArray(data.aircraft)) {
+                data.aircraft.forEach(aircraft => {
+                    const flight = {
+                        id: aircraft.hex || aircraft.flight || 'UNKNOWN',
+                        lat: aircraft.lat,
+                        lng: aircraft.lon,
+                        alt: aircraft.alt_baro || aircraft.alt_geom || 0,
+                        heading: aircraft.track || 0,
+                        speed: aircraft.gs || 0,
+                        aircraft_type: aircraft.t || 'UNKNOWN',
+                        callsign: aircraft.flight || '',
+                        squawk: aircraft.squawk || '',
+                        vertical_speed: aircraft.baro_rate || 0
+                    };
+
+                    flight.type = classifyAircraft(flight);
+                    flight.threat = assessThreatLevel(flight);
+
+                    if (flight.lat && flight.lng) {
+                        addRealFlightToMap(flight);
+                    }
+                });
+            }
+        }
+
+        // Global array to store flight markers for clearing
+        let flightMarkers = [];
+
+        function addRealFlightToMap(flight) {
+            let icon, color, riskLevel;
+            
+            // Determine icon and color based on real aircraft classification
+            switch (flight.type) {
+                case 'drone':
+                    icon = '🚁';
+                    color = flight.threat ? '#ff1744' : '#ff9800';
+                    riskLevel = flight.threat ? 'HIGH THREAT' : 'MODERATE';
+                    break;
+                case 'unknown_small':
+                    icon = '🛩️';
+                    color = '#ff9800';
+                    riskLevel = 'UNKNOWN - INVESTIGATE';
+                    break;
+                case 'military':
+                    icon = '🚀';
+                    color = '#9c27b0';
+                    riskLevel = 'MILITARY';
+                    break;
+                case 'commercial':
+                    icon = '✈️';
+                    color = '#2196f3';
+                    riskLevel = 'CIVILIAN';
+                    break;
+                case 'general_aviation':
+                    icon = '🛩️';
+                    color = '#4caf50';
+                    riskLevel = 'GENERAL AVIATION';
+                    break;
+                default:
+                    icon = '❓';
+                    color = '#ff5722';
+                    riskLevel = 'UNIDENTIFIED';
             }
 
             const marker = L.marker([flight.lat, flight.lng], {
                 icon: L.divIcon({
-                    html: `<div style="color: ${color}; font-size: 20px; text-align: center;">${icon}</div>`,
+                    html: `<div style="color: ${color}; font-size: 18px; text-align: center; filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));">${icon}</div>`,
                     className: 'flight-marker',
-                    iconSize: [30, 30]
+                    iconSize: [25, 25]
                 })
             }).addTo(map);
 
+            // Detailed popup with real flight information
             marker.bindPopup(`
-                <div style="background: var(--primary-bg); color: var(--text-primary); padding: 10px; border-radius: 5px;">
-                    <strong>Flight ID:</strong> ${flight.id}<br>
-                    <strong>Type:</strong> ${flight.type}<br>
-                    <strong>Altitude:</strong> ${flight.alt} ft<br>
-                    <strong>Heading:</strong> ${flight.heading}°<br>
-                    ${flight.threat ? '<strong style="color: var(--accent-red);">⚠️ THREAT DETECTED</strong>' : ''}
+                <div style="background: var(--primary-bg); color: var(--text-primary); padding: 12px; border-radius: 8px; border: 1px solid ${color}; min-width: 250px;">
+                    <div style="color: ${color}; font-weight: bold; font-size: 16px; margin-bottom: 8px;">
+                        ${icon} ${flight.callsign || flight.id}
+                    </div>
+                    <div style="margin-bottom: 4px;"><strong>Type:</strong> ${flight.type.toUpperCase()}</div>
+                    <div style="margin-bottom: 4px;"><strong>Aircraft:</strong> ${flight.aircraft_type}</div>
+                    <div style="margin-bottom: 4px;"><strong>Registration:</strong> ${flight.registration || 'N/A'}</div>
+                    <div style="margin-bottom: 4px;"><strong>Altitude:</strong> ${flight.alt} ft</div>
+                    <div style="margin-bottom: 4px;"><strong>Speed:</strong> ${flight.speed} kts</div>
+                    <div style="margin-bottom: 4px;"><strong>Heading:</strong> ${flight.heading}°</div>
+                    <div style="margin-bottom: 4px;"><strong>V-Speed:</strong> ${flight.vertical_speed} ft/min</div>
+                    <div style="margin-bottom: 8px;"><strong>Source:</strong> ${getSourceName(flight.source)}</div>
+                    <div style="color: ${flight.threat ? '#ff1744' : color}; font-weight: bold;">
+                        🛡️ ${riskLevel}
+                    </div>
+                    ${flight.threat ? '<div style="color: #ff1744; font-weight: bold; margin-top: 8px;">⚠️ REQUIRES MONITORING</div>' : ''}
                 </div>
             `);
 
+            // Add to markers array for tracking
+            flightMarkers.push(marker);
+
+            // Auto-alert for high-threat targets
             if (flight.threat) {
                 showThreatAlert(flight);
+                addTerminalOutput(`HIGH THREAT: ${flight.callsign || flight.id} detected at ${flight.lat.toFixed(4)}, ${flight.lng.toFixed(4)}`, 'error');
             }
 
-            trackingCount++;
-            updateCounters();
+            return marker;
+        }
+
+        function getSourceName(source) {
+            switch (source) {
+                case 0: return 'ADS-B';
+                case 1: return 'MLAT';
+                case 2: return 'FLARM';
+                case 3: return 'FAA';
+                case 4: return 'ESTIMATED';
+                default: return 'UNKNOWN';
+            }
+        }
+
+        function clearFlightMarkers() {
+            // Remove all existing flight markers from map
+            flightMarkers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            flightMarkers = [];
+        }
+
+        function updateRealCounters(aircraftCount, droneCount, threatCount) {
+            document.getElementById('threatCount').textContent = threatCount;
+            document.getElementById('trackingCount').textContent = aircraftCount;
+            document.getElementById('activeTargets').textContent = droneCount;
+            
+            // Update threat level indicator
+            const threatLevel = document.getElementById('threatLevel');
+            if (threatCount > 5) {
+                threatLevel.textContent = 'CRITICAL';
+                threatLevel.style.color = 'var(--accent-red)';
+            } else if (threatCount > 2) {
+                threatLevel.textContent = 'HIGH';
+                threatLevel.style.color = 'var(--accent-orange)';
+            } else if (threatCount > 0) {
+                threatLevel.textContent = 'MODERATE';
+                threatLevel.style.color = 'var(--accent-orange)';
+            } else {
+                threatLevel.textContent = 'LOW';
+                threatLevel.style.color = 'var(--accent-green)';
+            }
+        }
+
+        // Legacy function for compatibility - now redirects to real data function
+        function addFlightToMap(flight) {
+            return addRealFlightToMap(flight);
         }
 
         function initializeSDR() {
