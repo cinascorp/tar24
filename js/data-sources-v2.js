@@ -673,7 +673,9 @@ class DataSourceManager {
      * Update status UI
      */
     updateStatusUI(sourceName, status) {
-        const statusElement = document.getElementById(`${sourceName.toLowerCase()}Status`);
+        const idMap = { FlightRadar24: 'fr24Status', OpenSky: 'openskyStatus', ADSB: 'adsbStatus', KiwiSDR: 'kiwisdrStatus' };
+        const targetId = idMap[sourceName] || `${sourceName.toLowerCase()}Status`;
+        const statusElement = document.getElementById(targetId);
         if (statusElement) {
             statusElement.className = `status-indicator ${status}`;
         }
@@ -683,7 +685,9 @@ class DataSourceManager {
      * Update source toggle UI
      */
     updateSourceToggleUI(sourceName, enabled) {
-        const toggleElement = document.getElementById(`${sourceName.toLowerCase()}Toggle`);
+        const idMap = { FlightRadar24: 'fr24Toggle', OpenSky: 'openskyToggle', ADSB: 'adsbToggle', KiwiSDR: 'kiwisdrToggle' };
+        const targetId = idMap[sourceName] || `${sourceName.toLowerCase()}Toggle`;
+        const toggleElement = document.getElementById(targetId);
         if (toggleElement) {
             toggleElement.checked = enabled;
         }

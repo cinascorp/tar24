@@ -197,14 +197,6 @@ class MapController {
     }
     
     /**
-     * Initialize the map (called from main app)
-     */
-    async initializeMap() {
-        // This is called by the main application after initialization
-        console.log('✅ Map system ready');
-    }
-    
-    /**
      * Show the map
      */
     show() {
