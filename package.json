@@ -1,0 +1,114 @@
+{
+  "name": "c4isr-military-tracking-system",
+  "version": "2.0.0",
+  "description": "Enhanced Military-Grade Flight Tracking and Analysis Application for C4ISR Operations",
+  "main": "c4isr-v2.html",
+  "scripts": {
+    "start": "http-server . -p 8080 -c-1",
+    "dev": "http-server . -p 8080 -c-1 --cors",
+    "build": "echo 'No build process required - static files only'",
+    "test": "echo 'No tests specified'",
+    "lint": "eslint js/*.js",
+    "format": "prettier --write js/*.js *.html *.css",
+    "serve": "python3 -m http.server 8080",
+    "serve-python2": "python -m SimpleHTTPServer 8080"
+  },
+  "keywords": [
+    "c4isr",
+    "military",
+    "tracking",
+    "flight",
+    "radar",
+    "ads-b",
+    "threat-detection",
+    "gps-jamming",
+    "stealth",
+    "surveillance",
+    "intelligence",
+    "command-control",
+    "real-time",
+    "mapping",
+    "3d-globe",
+    "leaflet",
+    "threejs",
+    "military-grade",
+    "defense",
+    "situational-awareness"
+  ],
+  "author": {
+    "name": "C4ISR Development Team",
+    "email": "dev@c4isr-system.com",
+    "url": "https://c4isr-system.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/c4isr-system/military-tracking-v2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/c4isr-system/military-tracking-v2/issues"
+  },
+  "homepage": "https://c4isr-system.com",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "eslint": "^8.40.0",
+    "prettier": "^2.8.8"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
+    "three": "^0.152.2"
+  },
+  "browserslist": [
+    "Chrome >= 90",
+    "Firefox >= 88",
+    "Safari >= 14",
+    "Edge >= 90"
+  ],
+  "files": [
+    "*.html",
+    "js/",
+    "styles/",
+    "README*.md",
+    "LICENSE"
+  ],
+  "directories": {
+    "lib": "js",
+    "test": "tests",
+    "docs": "docs"
+  },
+  "config": {
+    "port": 8080,
+    "host": "localhost"
+  },
+  "metadata": {
+    "military_compliance": {
+      "security_level": "military-grade",
+      "encryption": "AES-256",
+      "access_control": "role-based",
+      "audit_logging": true,
+      "data_retention": "configurable"
+    },
+    "performance": {
+      "max_flights": 50000,
+      "update_rate": "1-10 seconds",
+      "memory_limit": "512MB",
+      "frame_rate": "60 FPS"
+    },
+    "features": {
+      "gps_jamming": true,
+      "stealth_mode": true,
+      "threat_detection": true,
+      "multi_language": true,
+      "3d_visualization": true,
+      "real_time_tracking": true
+    }
+  },
+  "security": {
+    "disclosure": "This system is designed for military and defense applications. Users are responsible for compliance with local laws and regulations regarding GPS jamming, surveillance, and military operations."
+  }
+}
