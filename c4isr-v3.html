@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4ISR Military Tracking System v3.0.0 - Advanced Drone Operations</title>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-dark.min.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.2.3/adapter.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-bg: #000510;
+            --secondary-bg: #0a0f1a;
+            --tertiary-bg: #151a25;
+            --accent-green: #00ff41;
+            --accent-red: #ff1744;
+            --accent-orange: #ff9800;
+            --accent-blue: #2196f3;
+            --accent-purple: #9c27b0;
+            --accent-cyan: #00bcd4;
+            --text-primary: #ffffff;
+            --text-secondary: #b0bec5;
+            --text-tertiary: #607d8b;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+            --glow-green: 0 0 20px rgba(0, 255, 65, 0.4);
+            --glow-red: 0 0 20px rgba(255, 23, 68, 0.4);
+            --glow-blue: 0 0 20px rgba(33, 150, 243, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: radial-gradient(ellipse at top, #0a1426 0%, #000510 50%, #000000 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Military Grid Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header with Military HUD Style */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(10, 15, 26, 0.95), rgba(0, 5, 16, 0.95));
+            backdrop-filter: blur(15px);
+            border-bottom: 2px solid var(--accent-green);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+
+        .header-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .language-switcher {
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .lang-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .lang-btn.active {
+            background: var(--accent-green);
+            color: var(--primary-bg);
+            box-shadow: var(--glow-green);
+        }
+
+        /* RTL Support */
+        [dir="rtl"] {
+            text-align: right;
+        }
+
+        [dir="rtl"] .header-left {
+            order: 3;
+        }
+
+        [dir="rtl"] .header-center {
+            order: 2;
+        }
+
+        [dir="rtl"] .status-indicators {
+            order: 1;
+        }
+
+        [dir="rtl"] .sidebar {
+            right: 0;
+            left: auto;
+            border-right: none;
+            border-left: 1px solid var(--accent-green);
+        }
+
+        [dir="rtl"] .map-container {
+            margin-right: 350px;
+            margin-left: 0;
+        }
+
+        [dir="rtl"] .hud-overlay {
+            right: auto;
+            left: 20px;
+        }
+
+        [dir="rtl"] .info-panel {
+            right: 350px;
+            left: 0;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent-green);
+            text-shadow: var(--glow-green);
+            letter-spacing: 2px;
+        }
+
+        .version-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .version {
+            font-size: 14px;
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .build-info {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            opacity: 0.8;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            font-size: 12px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: var(--accent-green);
+            box-shadow: var(--glow-green);
+        }
+
+        .status-indicator.threat {
+            background: var(--accent-red);
+            box-shadow: var(--glow-red);
+            animation: pulse 0.5s infinite;
+        }
+
+        .status-indicator.warning {
+            background: var(--accent-orange);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        /* Main Container */
+        .main-container {
+            display: flex;
+            height: 100vh;
+            padding-top: 80px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: linear-gradient(180deg, var(--secondary-bg), var(--primary-bg));
+            border-right: 1px solid var(--accent-green);
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Military Controls */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: var(--accent-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            border-radius: 5px;
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 12px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-red), #d32f2f);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(255, 23, 68, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--accent-orange), #f57c00);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-green), #388e3c);
+        }
+
+        /* Operation Buttons */
+        .operation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .operation-btn {
+            padding: 15px 10px;
+            font-size: 11px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .operation-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .operation-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: var(--primary-bg);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: var(--primary-bg);
+        }
+
+        /* HUD Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0, 5, 16, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--accent-green);
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 500;
+            box-shadow: var(--shadow);
+        }
+
+        .hud-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .hud-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+        }
+
+        .hud-label {
+            color: var(--text-secondary);
+        }
+
+        .hud-value {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        /* Bottom Info Panel */
+        .info-panel {
+            position: absolute;
+            bottom: 0;
+            left: 350px;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(180deg, transparent, rgba(0, 5, 16, 0.95));
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--accent-green);
+            padding: 20px;
+            z-index: 500;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .info-section {
+            flex: 1;
+        }
+
+        .info-title {
+            font-size: 12px;
+            color: var(--accent-cyan);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .info-content {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Threat Alert */
+        .threat-alert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(255, 23, 68, 0.9), rgba(211, 47, 47, 0.9));
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid var(--accent-red);
+            z-index: 1500;
+            text-align: center;
+            box-shadow: var(--shadow), var(--glow-red);
+            display: none;
+        }
+
+        .alert-icon {
+            font-size: 48px;
+            color: var(--accent-red);
+            margin-bottom: 15px;
+            animation: pulse 0.5s infinite;
+        }
+
+        .alert-title {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .alert-message {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* Frequency Monitor */
+        .frequency-monitor {
+            background: rgba(0, 5, 16, 0.8);
+            border: 1px solid var(--accent-cyan);
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .frequency-display {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: var(--accent-green);
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            margin-bottom: 10px;
+            border: 1px solid var(--accent-green);
+        }
+
+        .frequency-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+
+        .freq-btn {
+            padding: 8px;
+            font-size: 10px;
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .freq-btn:hover {
+            background: var(--accent-blue);
+        }
+
+        /* SDR Integration Panel */
+        .sdr-panel {
+            background: rgba(21, 26, 37, 0.9);
+            border: 1px solid var(--accent-purple);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .sdr-title {
+            color: var(--accent-purple);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .sdr-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+                position: absolute;
+                top: 80px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-container {
+                flex-direction: column;
+            }
+
+            .map-container {
+                height: 60vh;
+            }
+
+            .hud-overlay {
+                width: 250px;
+                top: 10px;
+                right: 10px;
+                padding: 15px;
+            }
+
+            .info-panel {
+                left: 0;
+                height: auto;
+                padding: 15px;
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Custom Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--secondary-bg);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--accent-green);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">C4ISR v3</div>
+            <div class="version-info">
+                <div class="version">VERSION 3.0.0</div>
+                <div class="build-info">BUILD: ADVANCED-DRONE-OPS</div>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <!-- Language Switcher -->
+            <div class="language-switcher">
+                <button class="lang-btn" onclick="setLanguage('en')" id="langEnBtn">EN</button>
+                <button class="lang-btn" onclick="setLanguage('fa')" id="langFaBtn">فا</button>
+            </div>
+        </div>
+        
+        <div class="status-indicators">
+            <div class="status-item">
+                <div class="status-indicator online"></div>
+                <span class="status-text" data-lang="statusHTTP3">HTTP/3 ACTIVE</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator online"></div>
+                <span class="status-text" data-lang="statusSDR">SDR ONLINE</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator warning"></div>
+                <span class="status-text" data-lang="statusThreats">THREATS</span>: <span id="threatCount">0</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator online"></div>
+                <span class="status-text" data-lang="statusTracking">TRACKING</span>: <span id="trackingCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Target Acquisition -->
+            <div class="sidebar-section">
+                <div class="section-title" data-lang="targetAcquisition">🎯 Target Acquisition</div>
+                <div class="control-group">
+                    <label class="control-label" data-lang="frequencyRange">Frequency Range (MHz)</label>
+                    <input type="text" class="control-input" id="freqRange" value="400-6000" placeholder="400-6000">
+                </div>
+                <div class="control-group">
+                    <label class="control-label" data-lang="detectionSensitivity">Detection Sensitivity</label>
+                    <input type="range" class="control-input" id="sensitivity" min="1" max="10" value="7">
+                </div>
+                <button class="btn btn-success" id="startScanBtn" onclick="startScanning()">
+                    <i class="fas fa-radar"></i> <span data-lang="startScan">START SCAN</span>
+                </button>
+            </div>
+
+            <!-- Military Operations -->
+            <div class="sidebar-section">
+                <div class="section-title" data-lang="militaryOps">⚔️ Military Operations</div>
+                <div class="operation-grid">
+                    <button class="btn operation-btn btn-danger" onclick="jamTarget()">
+                        <i class="fas fa-broadcast-tower"></i><br><span data-lang="jamDrone">JAM DRONE</span>
+                    </button>
+                    <button class="btn operation-btn btn-danger" onclick="captureTarget()">
+                        <i class="fas fa-hand-paper"></i><br><span data-lang="capture">CAPTURE</span>
+                    </button>
+                    <button class="btn operation-btn btn-danger" onclick="destroyTarget()">
+                        <i class="fas fa-explosion"></i><br><span data-lang="destroy">DESTROY</span>
+                    </button>
+                    <button class="btn operation-btn btn-warning" onclick="spoofData()">
+                        <i class="fas fa-mask"></i><br><span data-lang="spoofData">SPOOF DATA</span>
+                    </button>
+                </div>
+                
+                <div class="control-group" style="margin-top: 20px;">
+                    <label class="control-label" data-lang="targetCoords">Target Coordinates</label>
+                    <input type="text" class="control-input" id="targetCoords" placeholder="LAT, LON">
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label" data-lang="operationZone">Operation Zone</label>
+                    <select class="control-input" id="operationZone">
+                        <option value="ocean" data-lang="oceanTerritory">Ocean Territory</option>
+                        <option value="desert" data-lang="desertRegion">Desert Region</option>
+                        <option value="urban" data-lang="urbanArea">Urban Area</option>
+                        <option value="border" data-lang="borderZone">Border Zone</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- SDR Integration -->
+            <div class="sidebar-section">
+                <div class="section-title">📡 SDR Integration</div>
+                <div class="sdr-panel">
+                    <div class="sdr-title">KiwiSDR + GNU Radio</div>
+                    <div class="frequency-display" id="currentFreq">433.920 MHz</div>
+                    <div class="sdr-controls">
+                        <button class="btn freq-btn" onclick="tuneFrequency(433.92)">433.92</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(868.0)">868.0</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(915.0)">915.0</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(1090.0)">1090.0</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(1575.42)">GPS L1</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(2400.0)">2.4 GHz</button>
+                    </div>
+                </div>
+                
+                <div class="control-group" style="margin-top: 15px;">
+                    <label class="control-label">Signal Strength</label>
+                    <div id="signalStrength" style="height: 20px; background: linear-gradient(90deg, var(--accent-green) 70%, transparent 70%); border: 1px solid var(--border-color); border-radius: 3px;"></div>
+                </div>
+            </div>
+
+            <!-- Stealth Mode -->
+            <div class="sidebar-section">
+                <div class="section-title">🥷 Stealth Operations</div>
+                <div class="control-group">
+                    <button class="btn btn-warning" onclick="enableStealth()" id="stealthBtn">
+                        <i class="fas fa-user-secret"></i> ENABLE STEALTH
+                    </button>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Spoofing Status</label>
+                    <div id="spoofStatus" style="color: var(--accent-red);">INACTIVE</div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">GPS Jamming Range</label>
+                    <input type="range" class="control-input" id="jammingRange" min="1" max="50" value="10">
+                    <span id="jamRangeValue" style="color: var(--accent-cyan);">10 km</span>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="sidebar-section">
+                <div class="section-title">💻 System Status</div>
+                <div class="control-group">
+                    <div style="font-size: 12px; color: var(--text-secondary);">
+                        <div>Platform: <span style="color: var(--accent-cyan);">Kali Linux / Android</span></div>
+                        <div>Protocol: <span style="color: var(--accent-green);">HTTP/3 + QUIC</span></div>
+                        <div>Encryption: <span style="color: var(--accent-green);">AES-256</span></div>
+                        <div>Location: <span style="color: var(--accent-orange);" id="userLocation">Acquiring...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- HUD Overlay -->
+            <div class="hud-overlay">
+                <div class="hud-title" data-lang="missionControlHUD">Mission Control HUD</div>
+                <div class="hud-item">
+                    <span class="hud-label" data-lang="activeTargets">Active Targets:</span>
+                    <span class="hud-value" id="activeTargets">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label" data-lang="threatLevel">Threat Level:</span>
+                    <span class="hud-value" id="threatLevel" style="color: var(--accent-green);" data-lang="threatLow">LOW</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label" data-lang="signalQuality">Signal Quality:</span>
+                    <span class="hud-value" id="signalQuality">98%</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label" data-lang="networkLatency">Network Latency:</span>
+                    <span class="hud-value" id="networkLatency">12ms</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label" data-lang="encryption">Encryption:</span>
+                    <span class="hud-value" style="color: var(--accent-green);">ACTIVE</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label" data-lang="stealthStatus">Stealth Mode:</span>
+                    <span class="hud-value" id="stealthStatusDisplay" style="color: var(--accent-red);">DISABLED</span>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <div class="info-section">
+                    <div class="info-title" data-lang="currentOperation">Current Operation</div>
+                    <div class="info-content" id="currentOperation" data-lang="surveillanceMode">Surveillance Mode</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-title" data-lang="activeFrequency">Active Frequency</div>
+                    <div class="info-content" id="activeFrequency">433.920 MHz</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-title" data-lang="lastDetection">Last Detection</div>
+                    <div class="info-content" id="lastDetection">No threats detected</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-title" data-lang="missionTimer">Mission Timer</div>
+                    <div class="info-content" id="missionTimer">00:00:00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Threat Alert Modal -->
+    <div id="threatAlert" class="threat-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-title" data-lang="hostileDroneDetected">HOSTILE DRONE DETECTED</div>
+        <div class="alert-message" id="alertMessage" data-lang="unidentifiedAerial">Unidentified aerial vehicle detected in restricted airspace</div>
+        <button class="btn btn-danger" onclick="closeAlert()" data-lang="acknowledge">ACKNOWLEDGE</button>
+        <button class="btn btn-warning" onclick="engageTarget()" data-lang="engageTarget">ENGAGE TARGET</button>
+    </div>
+
+    <script>
+        // Global variables
+        let map;
+        let detectedTargets = [];
+        let activeOperations = [];
+        let stealthMode = false;
+        let scanningActive = false;
+        let missionStartTime = Date.now();
+        let threatCount = 0;
+        let trackingCount = 0;
+        let currentLanguage = 'en'; // Default to English
+
+        // Language support object
+        const languages = {
+            en: {
+                // Header and Navigation
+                appTitle: "C4ISR v3 - Military Operations",
+                buildInfo: "BUILD: ADVANCED-DRONE-OPS",
+                statusHTTP3: "HTTP/3 ACTIVE",
+                statusSDR: "SDR ONLINE",
+                statusThreats: "THREATS",
+                statusTracking: "TRACKING",
+                
+                // Sidebar Sections
+                targetAcquisition: "🎯 Target Acquisition",
+                frequencyRange: "Frequency Range (MHz)",
+                detectionSensitivity: "Detection Sensitivity",
+                startScan: "START SCAN",
+                stopScan: "STOP SCAN",
+                
+                // Military Operations
+                militaryOps: "⚔️ Military Operations",
+                jamDrone: "JAM DRONE",
+                capture: "CAPTURE",
+                destroy: "DESTROY",
+                spoofData: "SPOOF DATA",
+                targetCoords: "Target Coordinates",
+                operationZone: "Operation Zone",
+                
+                // Operation Zones
+                oceanTerritory: "Ocean Territory",
+                desertRegion: "Desert Region",
+                urbanArea: "Urban Area",
+                borderZone: "Border Zone",
+                
+                // SDR Integration
+                sdrIntegration: "📡 SDR Integration",
+                signalStrength: "Signal Strength",
+                
+                // Stealth Operations
+                stealthOps: "🥷 Stealth Operations",
+                enableStealth: "ENABLE STEALTH",
+                disableStealth: "DISABLE STEALTH",
+                spoofingStatus: "Spoofing Status",
+                gpsJammingRange: "GPS Jamming Range",
+                
+                // System Status
+                systemStatus: "💻 System Status",
+                platform: "Platform",
+                protocol: "Protocol",
+                encryption: "Encryption",
+                location: "Location",
+                
+                // HUD Elements
+                missionControlHUD: "Mission Control HUD",
+                activeTargets: "Active Targets",
+                threatLevel: "Threat Level",
+                signalQuality: "Signal Quality",
+                networkLatency: "Network Latency",
+                stealthStatus: "Stealth Mode",
+                
+                // Info Panel
+                currentOperation: "Current Operation",
+                activeFrequency: "Active Frequency",
+                lastDetection: "Last Detection",
+                missionTimer: "Mission Timer",
+                
+                // Operations
+                surveillanceMode: "Surveillance Mode",
+                activeScanning: "Active Scanning",
+                jammingActive: "JAMMING ACTIVE",
+                captureSequence: "CAPTURE SEQUENCE",
+                destructionSequence: "DESTRUCTION SEQUENCE",
+                stealthActive: "STEALTH ACTIVE",
+                
+                // Threat Levels
+                threatLow: "LOW",
+                threatModerate: "MODERATE", 
+                threatHigh: "HIGH",
+                threatCritical: "CRITICAL",
+                
+                // Aircraft Types
+                drone: "DRONE",
+                commercial: "COMMERCIAL",
+                military: "MILITARY",
+                generalAviation: "GENERAL AVIATION",
+                unknown: "UNKNOWN",
+                
+                // Messages
+                noTargetsDetected: "No targets detected for operation",
+                targetJammed: "Target jammed at",
+                captureInitiated: "Capture initiated at",
+                targetCaptured: "Target captured successfully",
+                targetEliminated: "Target eliminated",
+                threatNeutralized: "Threat neutralized",
+                operationCompleted: "Operation completed successfully",
+                systemInitialized: "System initialized successfully",
+                
+                // Alerts
+                hostileDroneDetected: "HOSTILE DRONE DETECTED",
+                unidentifiedAerial: "Unidentified aerial vehicle detected in restricted airspace",
+                acknowledge: "ACKNOWLEDGE",
+                engageTarget: "ENGAGE TARGET",
+                lethalForceWarning: "⚠️ LETHAL FORCE AUTHORIZED ⚠️",
+                confirmDestruction: "Initiate target destruction sequence?",
+                
+                // Terminal Messages
+                fetchingFlightData: "Fetching real-time flight data from FlightRadar24...",
+                successfullyFetched: "Successfully fetched",
+                realAircraft: "real aircraft",
+                errorFetching: "Error fetching real flight data",
+                highThreat: "HIGH THREAT",
+                detectedAt: "detected at"
+            },
+            fa: {
+                // Header and Navigation
+                appTitle: "سیستم عملیات نظامی C4ISR v3",
+                buildInfo: "ساخت: عملیات پیشرفته پهپاد",
+                statusHTTP3: "HTTP/3 فعال",
+                statusSDR: "SDR آنلاین", 
+                statusThreats: "تهدیدها",
+                statusTracking: "ردیابی",
+                
+                // Sidebar Sections
+                targetAcquisition: "🎯 کسب هدف",
+                frequencyRange: "محدوده فرکانس (مگاهرتز)",
+                detectionSensitivity: "حساسیت تشخیص",
+                startScan: "شروع اسکن",
+                stopScan: "توقف اسکن",
+                
+                // Military Operations
+                militaryOps: "⚔️ عملیات نظامی",
+                jamDrone: "مختل کردن پهپاد",
+                capture: "تسخیر",
+                destroy: "انهدام",
+                spoofData: "جعل داده",
+                targetCoords: "مختصات هدف",
+                operationZone: "منطقه عملیات",
+                
+                // Operation Zones
+                oceanTerritory: "قلمرو اقیانوسی",
+                desertRegion: "منطقه صحرایی",
+                urbanArea: "منطقه شهری",
+                borderZone: "منطقه مرزی",
+                
+                // SDR Integration
+                sdrIntegration: "📡 یکپارچگی SDR",
+                signalStrength: "قدرت سیگنال",
+                
+                // Stealth Operations
+                stealthOps: "🥷 عملیات رازآلود",
+                enableStealth: "فعال کردن حالت رازآلود",
+                disableStealth: "غیرفعال کردن حالت رازآلود",
+                spoofingStatus: "وضعیت جعل",
+                gpsJammingRange: "برد مختل کردن GPS",
+                
+                // System Status
+                systemStatus: "💻 وضعیت سیستم",
+                platform: "پلتفرم",
+                protocol: "پروتکل",
+                encryption: "رمزنگاری",
+                location: "موقعیت",
+                
+                // HUD Elements
+                missionControlHUD: "رابط کنترل ماموریت",
+                activeTargets: "اهداف فعال",
+                threatLevel: "سطح تهدید",
+                signalQuality: "کیفیت سیگنال",
+                networkLatency: "تاخیر شبکه",
+                stealthStatus: "حالت رازآلود",
+                
+                // Info Panel
+                currentOperation: "عملیات جاری",
+                activeFrequency: "فرکانس فعال",
+                lastDetection: "آخرین تشخیص",
+                missionTimer: "زمان‌سنج ماموریت",
+                
+                // Operations
+                surveillanceMode: "حالت نظارت",
+                activeScanning: "اسکن فعال",
+                jammingActive: "مختل کردن فعال",
+                captureSequence: "دنباله تسخیر",
+                destructionSequence: "دنباله انهدام",
+                stealthActive: "حالت رازآلود فعال",
+                
+                // Threat Levels
+                threatLow: "کم",
+                threatModerate: "متوسط",
+                threatHigh: "بالا", 
+                threatCritical: "بحرانی",
+                
+                // Aircraft Types
+                drone: "پهپاد",
+                commercial: "تجاری",
+                military: "نظامی",
+                generalAviation: "هوانوردی عمومی",
+                unknown: "ناشناخته",
+                
+                // Messages
+                noTargetsDetected: "هیچ هدفی برای عملیات تشخیص داده نشد",
+                targetJammed: "هدف مختل شد در",
+                captureInitiated: "تسخیر آغاز شد در",
+                targetCaptured: "هدف با موفقیت تسخیر شد",
+                targetEliminated: "هدف حذف شد",
+                threatNeutralized: "تهدید خنثی شد",
+                operationCompleted: "عملیات با موفقیت تکمیل شد",
+                systemInitialized: "سیستم با موفقیت راه‌اندازی شد",
+                
+                // Alerts
+                hostileDroneDetected: "پهپاد خصمانه تشخیص داده شد",
+                unidentifiedAerial: "وسیله پرنده ناشناخته در حریم هوایی محدود تشخیص داده شد",
+                acknowledge: "تایید",
+                engageTarget: "درگیری با هدف",
+                lethalForceWarning: "⚠️ استفاده از نیروی کشنده مجاز است ⚠️",
+                confirmDestruction: "آغاز دنباله انهدام هدف؟",
+                
+                // Terminal Messages
+                fetchingFlightData: "دریافت داده‌های پروازی بلادرنگ از FlightRadar24...",
+                successfullyFetched: "با موفقیت دریافت شد",
+                realAircraft: "هواپیمای واقعی",
+                errorFetching: "خطا در دریافت داده‌های پروازی واقعی",
+                highThreat: "تهدید بالا",
+                detectedAt: "تشخیص داده شد در"
+            }
+        };
+
+        // Language utility functions
+        function getText(key) {
+            return languages[currentLanguage][key] || languages['en'][key] || key;
+        }
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            updateUILanguage();
+            localStorage.setItem('c4isr_language', lang);
+        }
+
+                 function updateUILanguage() {
+             // Update all elements with data-lang attributes
+             document.querySelectorAll('[data-lang]').forEach(element => {
+                 const key = element.getAttribute('data-lang');
+                 const text = getText(key);
+                 
+                 // Handle different element types
+                 if (element.tagName === 'INPUT' && element.type === 'text') {
+                     element.placeholder = text;
+                 } else if (element.tagName === 'OPTION') {
+                     element.textContent = text;
+                 } else {
+                     element.textContent = text;
+                 }
+             });
+
+             // Update language button states
+             document.querySelectorAll('.lang-btn').forEach(btn => {
+                 btn.classList.remove('active');
+             });
+             document.getElementById(`lang${currentLanguage.toUpperCase()}Btn`).classList.add('active');
+
+             // Update dynamic content
+             updateDynamicLanguageContent();
+
+             // Update direction for RTL languages
+             if (currentLanguage === 'fa') {
+                 document.documentElement.dir = 'rtl';
+                 document.documentElement.lang = 'fa';
+                 document.body.style.fontFamily = "'Vazir', 'Tahoma', 'Arial', sans-serif";
+                 
+                 // Add Persian font support
+                 if (!document.getElementById('persian-font')) {
+                     const link = document.createElement('link');
+                     link.id = 'persian-font';
+                     link.href = 'https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css';
+                     link.rel = 'stylesheet';
+                     document.head.appendChild(link);
+                 }
+             } else {
+                 document.documentElement.dir = 'ltr';
+                 document.documentElement.lang = 'en';
+                 document.body.style.fontFamily = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+             }
+         }
+
+         function updateDynamicLanguageContent() {
+             // Update scan button text based on state
+             const scanBtn = document.querySelector('#startScanBtn span');
+             if (scanBtn) {
+                 scanBtn.textContent = getText(scanningActive ? 'stopScan' : 'startScan');
+             }
+
+             // Update stealth button text based on state
+             const stealthBtn = document.querySelector('#stealthBtn span');
+             if (stealthBtn) {
+                 stealthBtn.textContent = getText(stealthMode ? 'disableStealth' : 'enableStealth');
+             }
+
+             // Update threat level display
+             const threatLevel = document.getElementById('threatLevel');
+             if (threatLevel) {
+                 const currentThreatText = threatLevel.textContent.trim();
+                 let threatKey = 'threatLow';
+                 if (currentThreatText.includes('HIGH') || currentThreatText.includes('بالا')) threatKey = 'threatHigh';
+                 else if (currentThreatText.includes('CRITICAL') || currentThreatText.includes('بحرانی')) threatKey = 'threatCritical';
+                 else if (currentThreatText.includes('MODERATE') || currentThreatText.includes('متوسط')) threatKey = 'threatModerate';
+                 threatLevel.textContent = getText(threatKey);
+             }
+         }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSystem();
+        });
+
+        async function initializeSystem() {
+            try {
+                // Show loading screen
+                showLoading();
+                
+                // Load saved language preference
+                const savedLang = localStorage.getItem('c4isr_language');
+                if (savedLang && (savedLang === 'en' || savedLang === 'fa')) {
+                    currentLanguage = savedLang;
+                }
+                
+                // Initialize language system
+                updateUILanguage();
+                
+                // Initialize HTTP/3 connection
+                await initializeHTTP3();
+                
+                // Initialize map
+                initializeMap();
+                
+                // Initialize SDR systems
+                initializeSDR();
+                
+                // Start background services
+                startBackgroundServices();
+                
+                // Get user location
+                await getUserLocation();
+                
+                // Hide loading screen
+                hideLoading();
+                
+                console.log(getText('systemInitialized'));
+                addTerminalOutput(getText('systemInitialized'), 'success');
+            } catch (error) {
+                console.error('System initialization failed:', error);
+                alert('System initialization failed. Please check your connection and try again.');
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function initializeHTTP3() {
+            // Simulate HTTP/3 + QUIC initialization
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log('HTTP/3 + QUIC protocol initialized');
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        function initializeMap() {
+            // Initialize Leaflet map with dark military theme
+            map = L.map('map', {
+                center: [35.6892, 51.3890], // Tehran coordinates as default
+                zoom: 8,
+                zoomControl: false,
+                attributionControl: false
+            });
+
+            // Add dark tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: 'C4ISR Military System v3.0',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add custom zoom control
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+
+            // Initialize global flight tracking
+            initializeGlobalFlightTracking();
+        }
+
+        function initializeGlobalFlightTracking() {
+            // Connect to real FlightRadar24 API for live flight data
+            fetchRealFlightData();
+            
+            // Start real-time updates every 10 seconds
+            setInterval(fetchRealFlightData, 10000);
+        }
+
+        async function fetchRealFlightData() {
+            try {
+                addTerminalOutput(getText('fetchingFlightData'), 'info');
+                
+                // Get current map bounds for targeted data fetching
+                const bounds = map.getBounds();
+                const north = bounds.getNorth();
+                const south = bounds.getSouth();
+                const east = bounds.getEast();
+                const west = bounds.getWest();
+                
+                // FlightRadar24 API endpoint for live data
+                const apiUrl = `https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=${north},${south},${west},${east}&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=0&maxage=14400&gliders=1&stats=0`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'C4ISR-v3-Military-System',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Clear existing markers
+                clearFlightMarkers();
+                
+                // Process real flight data
+                processRealFlightData(data);
+                
+                const aircraftCount = Object.keys(data).length - 4;
+                addTerminalOutput(`${getText('successfullyFetched')} ${aircraftCount} ${getText('realAircraft')}`, 'success');
+                
+            } catch (error) {
+                console.error('Error fetching flight data:', error);
+                addTerminalOutput(`${getText('errorFetching')}: ${error.message}`, 'error');
+                
+                // Fallback to alternative data source
+                await fetchAlternativeFlightData();
+            }
+        }
+
+        function processRealFlightData(data) {
+            let aircraftCount = 0;
+            let droneCount = 0;
+            let threatCount = 0;
+
+            // FlightRadar24 data format: each flight is an array with specific indices
+            Object.keys(data).forEach(key => {
+                if (key === 'full_count' || key === 'version' || key === 'stats' || key === 'callsign_list') {
+                    return; // Skip metadata
+                }
+
+                const flightData = data[key];
+                if (Array.isArray(flightData) && flightData.length >= 18) {
+                    const flight = {
+                        id: flightData[16] || key, // Callsign or hex ID
+                        lat: parseFloat(flightData[1]),
+                        lng: parseFloat(flightData[2]),
+                        alt: parseInt(flightData[4]) || 0,
+                        heading: parseInt(flightData[3]) || 0,
+                        speed: parseInt(flightData[5]) || 0,
+                        aircraft_type: flightData[8] || 'UNKNOWN',
+                        registration: flightData[9] || '',
+                        timestamp: flightData[10] || Date.now(),
+                        origin: flightData[11] || '',
+                        destination: flightData[12] || '',
+                        flight_number: flightData[13] || '',
+                        on_ground: flightData[14] === 1,
+                        vertical_speed: parseInt(flightData[15]) || 0,
+                        callsign: flightData[16] || '',
+                        source: flightData[17] || 0
+                    };
+
+                    // Classify aircraft type and threat level
+                    flight.type = classifyAircraft(flight);
+                    flight.threat = assessThreatLevel(flight);
+
+                    if (flight.lat && flight.lng) {
+                        addRealFlightToMap(flight);
+                        aircraftCount++;
+                        
+                        if (flight.type === 'drone' || flight.type === 'unknown_small') {
+                            droneCount++;
+                        }
+                        
+                        if (flight.threat) {
+                            threatCount++;
+                        }
+                    }
+                }
+            });
+
+            // Update counters with real data
+            updateRealCounters(aircraftCount, droneCount, threatCount);
+        }
+
+        function classifyAircraft(flight) {
+            const altitude = flight.alt;
+            const aircraftType = flight.aircraft_type?.toUpperCase() || '';
+            const speed = flight.speed;
+            
+            // Drone/UAV detection criteria
+            if (altitude < 1000 && speed < 100) {
+                return 'drone';
+            }
+            
+            // Small aircraft that could be drones
+            if (altitude < 2000 && speed < 150 && !aircraftType.includes('B7') && !aircraftType.includes('A3')) {
+                return 'unknown_small';
+            }
+            
+            // Commercial aircraft
+            if (aircraftType.includes('B7') || aircraftType.includes('A3') || aircraftType.includes('E1') || altitude > 10000) {
+                return 'commercial';
+            }
+            
+            // Military aircraft indicators
+            if (flight.callsign?.includes('MIL') || flight.callsign?.includes('RCH') || aircraftType.includes('F-') || aircraftType.includes('C-')) {
+                return 'military';
+            }
+            
+            // General aviation
+            if (altitude < 10000 && speed < 300) {
+                return 'general_aviation';
+            }
+            
+            return 'unknown';
+        }
+
+        function assessThreatLevel(flight) {
+            // Threat assessment based on multiple factors
+            let threatScore = 0;
+            
+            // Low altitude operations (potential surveillance)
+            if (flight.alt < 500) threatScore += 3;
+            else if (flight.alt < 1000) threatScore += 2;
+            
+            // Slow speed (loitering behavior)
+            if (flight.speed < 50) threatScore += 2;
+            else if (flight.speed < 100) threatScore += 1;
+            
+            // Unknown aircraft type
+            if (flight.type === 'unknown' || flight.type === 'unknown_small') threatScore += 2;
+            
+            // No flight plan/callsign
+            if (!flight.callsign || flight.callsign === '') threatScore += 1;
+            
+            // Proximity to sensitive areas (this would need geographic data)
+            // For now, we'll mark any unidentified low-altitude aircraft as potential threats
+            
+            return threatScore >= 4;
+        }
+
+        async function fetchAlternativeFlightData() {
+            try {
+                // Alternative: Try ADS-B Exchange API
+                addTerminalOutput('Attempting alternative data source...', 'warning');
+                
+                const bounds = map.getBounds();
+                const altUrl = `https://globe.adsbexchange.com/data/aircraft.json`;
+                
+                const response = await fetch(altUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    processADSBExchangeData(data);
+                    addTerminalOutput('Successfully connected to alternative data source', 'success');
+                } else {
+                    throw new Error('Alternative source also unavailable');
+                }
+                
+            } catch (error) {
+                addTerminalOutput('All real-time data sources unavailable. Operating in detection-only mode.', 'error');
+            }
+        }
+
+        function processADSBExchangeData(data) {
+            if (data.aircraft && Array.isArray(data.aircraft)) {
+                data.aircraft.forEach(aircraft => {
+                    const flight = {
+                        id: aircraft.hex || aircraft.flight || 'UNKNOWN',
+                        lat: aircraft.lat,
+                        lng: aircraft.lon,
+                        alt: aircraft.alt_baro || aircraft.alt_geom || 0,
+                        heading: aircraft.track || 0,
+                        speed: aircraft.gs || 0,
+                        aircraft_type: aircraft.t || 'UNKNOWN',
+                        callsign: aircraft.flight || '',
+                        squawk: aircraft.squawk || '',
+                        vertical_speed: aircraft.baro_rate || 0
+                    };
+
+                    flight.type = classifyAircraft(flight);
+                    flight.threat = assessThreatLevel(flight);
+
+                    if (flight.lat && flight.lng) {
+                        addRealFlightToMap(flight);
+                    }
+                });
+            }
+        }
+
+        // Global array to store flight markers for clearing
+        let flightMarkers = [];
+
+        function addRealFlightToMap(flight) {
+            let icon, color, riskLevel;
+            
+            // Determine icon and color based on real aircraft classification
+            switch (flight.type) {
+                case 'drone':
+                    icon = '🚁';
+                    color = flight.threat ? '#ff1744' : '#ff9800';
+                    riskLevel = flight.threat ? 'HIGH THREAT' : 'MODERATE';
+                    break;
+                case 'unknown_small':
+                    icon = '🛩️';
+                    color = '#ff9800';
+                    riskLevel = 'UNKNOWN - INVESTIGATE';
+                    break;
+                case 'military':
+                    icon = '🚀';
+                    color = '#9c27b0';
+                    riskLevel = 'MILITARY';
+                    break;
+                case 'commercial':
+                    icon = '✈️';
+                    color = '#2196f3';
+                    riskLevel = 'CIVILIAN';
+                    break;
+                case 'general_aviation':
+                    icon = '🛩️';
+                    color = '#4caf50';
+                    riskLevel = 'GENERAL AVIATION';
+                    break;
+                default:
+                    icon = '❓';
+                    color = '#ff5722';
+                    riskLevel = 'UNIDENTIFIED';
+            }
+
+            const marker = L.marker([flight.lat, flight.lng], {
+                icon: L.divIcon({
+                    html: `<div style="color: ${color}; font-size: 18px; text-align: center; filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));">${icon}</div>`,
+                    className: 'flight-marker',
+                    iconSize: [25, 25]
+                })
+            }).addTo(map);
+
+            // Detailed popup with real flight information
+            marker.bindPopup(`
+                <div style="background: var(--primary-bg); color: var(--text-primary); padding: 12px; border-radius: 8px; border: 1px solid ${color}; min-width: 250px;">
+                    <div style="color: ${color}; font-weight: bold; font-size: 16px; margin-bottom: 8px;">
+                        ${icon} ${flight.callsign || flight.id}
+                    </div>
+                    <div style="margin-bottom: 4px;"><strong>Type:</strong> ${flight.type.toUpperCase()}</div>
+                    <div style="margin-bottom: 4px;"><strong>Aircraft:</strong> ${flight.aircraft_type}</div>
+                    <div style="margin-bottom: 4px;"><strong>Registration:</strong> ${flight.registration || 'N/A'}</div>
+                    <div style="margin-bottom: 4px;"><strong>Altitude:</strong> ${flight.alt} ft</div>
+                    <div style="margin-bottom: 4px;"><strong>Speed:</strong> ${flight.speed} kts</div>
+                    <div style="margin-bottom: 4px;"><strong>Heading:</strong> ${flight.heading}°</div>
+                    <div style="margin-bottom: 4px;"><strong>V-Speed:</strong> ${flight.vertical_speed} ft/min</div>
+                    <div style="margin-bottom: 8px;"><strong>Source:</strong> ${getSourceName(flight.source)}</div>
+                    <div style="color: ${flight.threat ? '#ff1744' : color}; font-weight: bold;">
+                        🛡️ ${riskLevel}
+                    </div>
+                    ${flight.threat ? '<div style="color: #ff1744; font-weight: bold; margin-top: 8px;">⚠️ REQUIRES MONITORING</div>' : ''}
+                </div>
+            `);
+
+            // Add to markers array for tracking
+            flightMarkers.push(marker);
+
+            // Auto-alert for high-threat targets
+            if (flight.threat) {
+                showThreatAlert(flight);
+                addTerminalOutput(`${getText('highThreat')}: ${flight.callsign || flight.id} ${getText('detectedAt')} ${flight.lat.toFixed(4)}, ${flight.lng.toFixed(4)}`, 'error');
+            }
+
+            return marker;
+        }
+
+        function getSourceName(source) {
+            switch (source) {
+                case 0: return 'ADS-B';
+                case 1: return 'MLAT';
+                case 2: return 'FLARM';
+                case 3: return 'FAA';
+                case 4: return 'ESTIMATED';
+                default: return 'UNKNOWN';
+            }
+        }
+
+        function clearFlightMarkers() {
+            // Remove all existing flight markers from map
+            flightMarkers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            flightMarkers = [];
+        }
+
+        function updateRealCounters(aircraftCount, droneCount, threatCount) {
+            document.getElementById('threatCount').textContent = threatCount;
+            document.getElementById('trackingCount').textContent = aircraftCount;
+            document.getElementById('activeTargets').textContent = droneCount;
+            
+            // Update threat level indicator
+            const threatLevel = document.getElementById('threatLevel');
+            if (threatCount > 5) {
+                threatLevel.textContent = 'CRITICAL';
+                threatLevel.style.color = 'var(--accent-red)';
+            } else if (threatCount > 2) {
+                threatLevel.textContent = 'HIGH';
+                threatLevel.style.color = 'var(--accent-orange)';
+            } else if (threatCount > 0) {
+                threatLevel.textContent = 'MODERATE';
+                threatLevel.style.color = 'var(--accent-orange)';
+            } else {
+                threatLevel.textContent = 'LOW';
+                threatLevel.style.color = 'var(--accent-green)';
+            }
+        }
+
+        // Legacy function for compatibility - now redirects to real data function
+        function addFlightToMap(flight) {
+            return addRealFlightToMap(flight);
+        }
+
+        function initializeSDR() {
+            // Initialize SDR systems (KiwiSDR + GNU Radio simulation)
+            console.log('Initializing SDR systems...');
+            
+            // Start frequency monitoring
+            startFrequencyMonitoring();
+            
+            // Initialize signal processing
+            initializeSignalProcessing();
+        }
+
+        function startFrequencyMonitoring() {
+            setInterval(() => {
+                // Simulate signal strength variations
+                const signalStrength = Math.random() * 100;
+                updateSignalStrength(signalStrength);
+                
+                // Random frequency scanning
+                if (scanningActive) {
+                    const frequencies = [433.92, 868.0, 915.0, 1090.0, 1575.42, 2400.0];
+                    const randomFreq = frequencies[Math.floor(Math.random() * frequencies.length)];
+                    document.getElementById('currentFreq').textContent = randomFreq.toFixed(2) + ' MHz';
+                }
+            }, 2000);
+        }
+
+        function initializeSignalProcessing() {
+            // Simulate GNU Radio signal processing
+            console.log('GNU Radio signal processing initialized');
+        }
+
+        function startBackgroundServices() {
+            // Start mission timer
+            startMissionTimer();
+            
+            // Start network monitoring
+            startNetworkMonitoring();
+            
+            // Start threat monitoring
+            startThreatMonitoring();
+        }
+
+        function startMissionTimer() {
+            setInterval(() => {
+                const elapsed = Date.now() - missionStartTime;
+                const hours = Math.floor(elapsed / 3600000);
+                const minutes = Math.floor((elapsed % 3600000) / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                
+                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('missionTimer').textContent = timeString;
+            }, 1000);
+        }
+
+        function startNetworkMonitoring() {
+            setInterval(() => {
+                // Simulate network latency
+                const latency = Math.floor(Math.random() * 50) + 5;
+                document.getElementById('networkLatency').textContent = latency + 'ms';
+                
+                // Simulate signal quality
+                const quality = Math.floor(Math.random() * 20) + 80;
+                document.getElementById('signalQuality').textContent = quality + '%';
+            }, 3000);
+        }
+
+        function startThreatMonitoring() {
+            setInterval(() => {
+                // Random threat generation for demo
+                if (Math.random() < 0.1) { // 10% chance every interval
+                    generateRandomThreat();
+                }
+            }, 30000); // Check every 30 seconds
+        }
+
+        async function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const lat = position.coords.latitude.toFixed(4);
+                        const lng = position.coords.longitude.toFixed(4);
+                        document.getElementById('userLocation').textContent = `${lat}, ${lng}`;
+                        map.setView([position.coords.latitude, position.coords.longitude], 10);
+                    },
+                    error => {
+                        console.warn('Location access denied:', error);
+                        document.getElementById('userLocation').textContent = 'Location Denied';
+                    }
+                );
+            }
+        }
+
+        // Military Operations Functions
+        function startScanning() {
+            scanningActive = !scanningActive;
+            const btn = event.target;
+            
+            if (scanningActive) {
+                btn.innerHTML = `<i class="fas fa-stop"></i> <span data-lang="stopScan">${getText('stopScan')}</span>`;
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-success');
+                document.getElementById('currentOperation').textContent = getText('activeScanning');
+            } else {
+                btn.innerHTML = `<i class="fas fa-radar"></i> <span data-lang="startScan">${getText('startScan')}</span>`;
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-danger');
+                document.getElementById('currentOperation').textContent = getText('surveillanceMode');
+            }
+        }
+
+        function jamTarget() {
+            if (detectedTargets.length === 0) {
+                alert(getText('noTargetsDetected'));
+                return;
+            }
+            
+            const confirmation = confirm(getText('confirmJamming') || 'Initiate jamming operation on detected targets?');
+            if (confirmation) {
+                document.getElementById('currentOperation').textContent = getText('jammingActive');
+                document.getElementById('lastDetection').textContent = getText('targetJammed') + ' ' + new Date().toLocaleTimeString();
+                
+                // Simulate jamming effect
+                setTimeout(() => {
+                    alert(getText('operationCompleted'));
+                    document.getElementById('currentOperation').textContent = getText('surveillanceMode');
+                    updateDynamicLanguageContent();
+                }, 3000);
+            }
+        }
+
+        function captureTarget() {
+            if (detectedTargets.length === 0) {
+                alert('No targets available for capture operation');
+                return;
+            }
+            
+            const confirmation = confirm('Initiate drone capture sequence?');
+            if (confirmation) {
+                document.getElementById('currentOperation').textContent = 'CAPTURE SEQUENCE';
+                document.getElementById('lastDetection').textContent = 'Capture initiated at ' + new Date().toLocaleTimeString();
+                
+                setTimeout(() => {
+                    alert('Target captured successfully. Redirecting to secure landing zone.');
+                    document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                }, 5000);
+            }
+        }
+
+        function destroyTarget() {
+            if (detectedTargets.length === 0) {
+                alert('No hostile targets detected for destruction');
+                return;
+            }
+            
+            const confirmation = confirm('⚠️ LETHAL FORCE AUTHORIZED ⚠️\nInitiate target destruction sequence?');
+            if (confirmation) {
+                document.getElementById('currentOperation').textContent = 'DESTRUCTION SEQUENCE';
+                document.getElementById('threatLevel').textContent = 'CRITICAL';
+                document.getElementById('threatLevel').style.color = 'var(--accent-red)';
+                
+                setTimeout(() => {
+                    alert('Target neutralized. Threat eliminated.');
+                    document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                    document.getElementById('threatLevel').textContent = 'LOW';
+                    document.getElementById('threatLevel').style.color = 'var(--accent-green)';
+                }, 4000);
+            }
+        }
+
+        function spoofData() {
+            const confirmation = confirm('Enable data spoofing for military concealment?');
+            if (confirmation) {
+                document.getElementById('spoofStatus').textContent = 'ACTIVE';
+                document.getElementById('spoofStatus').style.color = 'var(--accent-green)';
+                document.getElementById('currentOperation').textContent = 'STEALTH ACTIVE';
+                
+                setTimeout(() => {
+                    alert('Data spoofing active. Military assets concealed from detection.');
+                }, 2000);
+            }
+        }
+
+        function enableStealth() {
+            stealthMode = !stealthMode;
+            const btn = document.getElementById('stealthBtn');
+            const status = document.getElementById('stealthStatus');
+            
+            if (stealthMode) {
+                btn.innerHTML = '<i class="fas fa-user-secret"></i> DISABLE STEALTH';
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-warning');
+                status.textContent = 'ENABLED';
+                status.style.color = 'var(--accent-green)';
+                document.getElementById('currentOperation').textContent = 'STEALTH MODE';
+            } else {
+                btn.innerHTML = '<i class="fas fa-user-secret"></i> ENABLE STEALTH';
+                btn.classList.add('btn-warning');
+                btn.classList.remove('btn-danger');
+                status.textContent = 'DISABLED';
+                status.style.color = 'var(--accent-red)';
+                document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+            }
+        }
+
+        // SDR Functions
+        function tuneFrequency(freq) {
+            document.getElementById('currentFreq').textContent = freq.toFixed(2) + ' MHz';
+            document.getElementById('activeFrequency').textContent = freq.toFixed(2) + ' MHz';
+            
+            // Simulate frequency-specific operations
+            if (freq === 1575.42) {
+                alert('GPS L1 frequency selected. GPS jamming capabilities enabled.');
+            } else if (freq === 2400.0) {
+                alert('2.4 GHz selected. Drone control frequency monitoring active.');
+            }
+        }
+
+        function updateSignalStrength(strength) {
+            const strengthBar = document.getElementById('signalStrength');
+            strengthBar.style.background = `linear-gradient(90deg, var(--accent-green) ${strength}%, transparent ${strength}%)`;
+        }
+
+        // Threat Management
+        function showThreatAlert(threat) {
+            document.getElementById('alertMessage').textContent = 
+                `${threat.type.toUpperCase()} detected at coordinates ${threat.lat.toFixed(4)}, ${threat.lng.toFixed(4)}`;
+            document.getElementById('threatAlert').style.display = 'block';
+        }
+
+        function closeAlert() {
+            document.getElementById('threatAlert').style.display = 'none';
+        }
+
+        function engageTarget() {
+            closeAlert();
+            document.getElementById('currentOperation').textContent = 'TARGET ENGAGEMENT';
+            setTimeout(() => {
+                alert('Target engagement protocols activated. Awaiting further orders.');
+                document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+            }, 3000);
+        }
+
+        function generateRandomThreat() {
+            const threats = [
+                { id: 'UNKNOWN-' + Math.floor(Math.random() * 1000), type: 'drone', threat: true },
+                { id: 'HOSTILE-' + Math.floor(Math.random() * 1000), type: 'aircraft', threat: true }
+            ];
+            
+            const threat = threats[Math.floor(Math.random() * threats.length)];
+            threat.lat = 35.6 + (Math.random() - 0.5) * 0.2;
+            threat.lng = 51.3 + (Math.random() - 0.5) * 0.2;
+            threat.alt = Math.floor(Math.random() * 10000) + 500;
+            threat.heading = Math.floor(Math.random() * 360);
+            
+            addFlightToMap(threat);
+            detectedTargets.push(threat);
+        }
+
+        function updateFlightPositions() {
+            // Simulate real-time flight position updates
+            document.querySelectorAll('.flight-marker').forEach(marker => {
+                // Add small random movements to simulate real-time tracking
+                const randomLat = (Math.random() - 0.5) * 0.001;
+                const randomLng = (Math.random() - 0.5) * 0.001;
+                // In a real implementation, this would update marker positions
+            });
+        }
+
+        function updateCounters() {
+            document.getElementById('threatCount').textContent = threatCount;
+            document.getElementById('trackingCount').textContent = trackingCount;
+            document.getElementById('activeTargets').textContent = detectedTargets.length;
+        }
+
+        // Jamming Range Control
+        document.getElementById('jammingRange').addEventListener('input', function() {
+            document.getElementById('jamRangeValue').textContent = this.value + ' km';
+        });
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        startScanning();
+                        break;
+                    case 'j':
+                        e.preventDefault();
+                        jamTarget();
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        captureTarget();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        destroyTarget();
+                        break;
+                }
+            }
+        });
+
+        // Network status monitoring
+        window.addEventListener('online', () => {
+            console.log('Network connection restored');
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Network connection lost');
+            alert('Network connection lost. Switching to offline mode.');
+        });
+
+        // Simple terminal output function for systems without terminal
+        function addTerminalOutput(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            // Try to add to terminal if it exists
+            const terminalOutput = document.getElementById('terminalOutput');
+            if (terminalOutput) {
+                const line = document.createElement('div');
+                line.className = `output-line output-${type}`;
+                line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                terminalOutput.appendChild(line);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                
+                // Keep only last 50 lines
+                while (terminalOutput.children.length > 50) {
+                    terminalOutput.removeChild(terminalOutput.firstChild);
+                }
+            }
+        }
+
+        // Error handling
+        window.addEventListener('error', function(e) {
+            console.error('System error:', e.error);
+        });
+
+        // Initialize language switcher on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial language button state
+            const savedLang = localStorage.getItem('c4isr_language') || 'en';
+            setLanguage(savedLang);
+        });
+    </script>
+</body>
+</html>
