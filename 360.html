@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>C4ISR 360 - Real Flight Ops</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+	<style>
+		:root { --bg:#0a0a0a; --panel:#161616; --accent:#00ff41; --danger:#ff3b30; --muted:#bfbfbf; --border:rgba(255,255,255,0.12); }
+		html, body { height:100%; margin:0; }
+		body { background: radial-gradient(1200px 700px at 20% 0%, #0b1217 0%, #0a0a0a 40%, #0a0a0a 100%); color:#fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+		.header { position:fixed; left:0; right:0; top:0; height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:rgba(10,10,10,0.9); border-bottom:1px solid var(--border); z-index:1000; }
+		.logo { color:var(--accent); font-weight:700; text-shadow:0 0 12px rgba(0,255,65,0.4); }
+		.header .controls { display:flex; gap:8px; }
+		.btn { border:1px solid var(--border); background:rgba(255,255,255,0.04); color:#fff; padding:6px 10px; border-radius:6px; cursor:pointer; }
+		.btn:hover { border-color:var(--accent); }
+		.container { position:absolute; top:56px; bottom:0; left:0; right:0; display:grid; grid-template-columns: 320px 1fr 360px; grid-template-rows: 1fr; }
+		.sidebar, .rightbar { background:rgba(22,22,22,0.9); border-right:1px solid var(--border); overflow:auto; }
+		.rightbar { border-right:none; border-left:1px solid var(--border); }
+		.section { padding:14px; border-bottom:1px solid var(--border); }
+		.section h3 { margin:0 0 10px; font-size:14px; color:var(--accent); }
+		#map { width:100%; height:100%; }
+		.badge { border:1px solid var(--border); border-radius:10px; padding:2px 6px; font-size:12px; }
+		.small { color:var(--muted); font-size:12px; }
+	</style>
+</head>
+<body>
+	<div class="header">
+		<div class="logo">C4ISR 360</div>
+		<div class="controls">
+			<button id="refresh" class="btn"><i class="fa fa-rotate"></i> Refresh</button>
+			<button id="ai" class="btn"><i class="fa fa-robot"></i> AI</button>
+		</div>
+	</div>
+	<div class="container">
+		<div class="sidebar">
+			<div class="section">
+				<h3>Data Sources</h3>
+				<div class="small">Live: FlightRadar24 (real flights). Simulated targets removed.</div>
+			</div>
+			<div class="section">
+				<h3>Filters</h3>
+				<label><input type="checkbox" id="filterMil" checked> Military</label><br>
+				<label><input type="checkbox" id="filterUav" checked> UAV/Drone</label><br>
+				<label><input type="checkbox" id="filterCivil" checked> Civil</label><br>
+				<label><input type="checkbox" id="filterHeli" checked> Helicopter</label>
+			</div>
+			<div class="section">
+				<h3>Selected Flight</h3>
+				<div id="selectedInfo" class="small">None</div>
+			</div>
+		</div>
+		<div id="map"></div>
+		<div class="rightbar">
+			<div class="section">
+				<h3>Operational View</h3>
+				<div id="opsSummary" class="small">Tracking real-time objects with mission overlays.</div>
+			</div>
+			<div class="section">
+				<h3>Counts</h3>
+				<div class="small">Total: <span id="countTotal">—</span> • Mil: <span id="countMil">—</span> • UAV: <span id="countUav">—</span> • Heli: <span id="countHeli">—</span> • Civil: <span id="countCivil">—</span></div>
+			</div>
+			<div class="section">
+				<h3>Photo</h3>
+				<iframe id="photoFrame" style="width:100%;height:240px;border:0;border-radius:6px;" src="about:blank"></iframe>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		let map;
+		let markers = new Map();
+		let flightsByHex = new Map();
+		let selectedHex = null;
+
+		function category(f) {
+			const t = (f.acType||'').toUpperCase();
+			if (t.includes('DRON') || t.includes('UAV') || t === 'QUAD') return 'uav';
+			if (t.includes('HELI')) return 'heli';
+			if ((f.callsign||'').startsWith('MIL')) return 'mil';
+			return 'civil';
+		}
+
+		function jetPhotosUrl(f) {
+			if (f.reg) return `https://www.jetphotos.com/photo/keyword/${encodeURIComponent(f.reg)}`;
+			if (f.acType) return `https://www.jetphotos.com/photo/keyword/${encodeURIComponent(f.acType)}`;
+			return null;
+		}
+
+		function colorFor(f) {
+			switch (category(f)) {
+				case 'mil': return '#ff3b30';
+				case 'uav': return '#ffffff';
+				case 'heli': return '#ffe34d';
+				default: return '#8ec7ff';
+			}
+		}
+
+		function addOrUpdateMarker(f) {
+			let m = markers.get(f.hex);
+			const color = colorFor(f);
+			const html = `<div style="display:flex;align-items:center;gap:6px">
+				<svg width="24" height="24" viewBox="0 0 24 24" style="transform:rotate(${f.heading||0}deg)">
+					<path fill="${color}" d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+				</svg>
+				<div class="badge">${f.callsign || f.reg || f.hex}</div>
+			</div>`;
+			if (!m) {
+				m = L.marker([f.lat, f.lon], { icon: L.divIcon({ className: '', html, iconSize: [1,1] }) })
+					.addTo(map)
+					.on('click', () => selectFlight(f.hex));
+				markers.set(f.hex, m);
+			} else {
+				m.setLatLng([f.lat, f.lon]);
+				m.setIcon(L.divIcon({ className: '', html, iconSize: [1,1] }));
+			}
+		}
+
+		function selectFlight(hex) {
+			selectedHex = hex;
+			const f = flightsByHex.get(hex);
+			if (!f) return;
+			document.getElementById('selectedInfo').innerHTML = `
+				<strong>${f.callsign || f.reg || f.hex}</strong><br>
+				Lat: ${f.lat.toFixed(4)} • Lon: ${f.lon.toFixed(4)}<br>
+				Alt: ${f.alt_ft ? f.alt_ft + ' ft' : '—'} • Spd: ${f.spd_kts ? f.spd_kts + ' kt' : '—'}<br>
+				Type: ${f.acType || '—'} • Reg: ${f.reg || '—'}`;
+			const url = jetPhotosUrl(f);
+			if (url) document.getElementById('photoFrame').src = url;
+		}
+
+		async function fetchFR24(bounds) {
+			const params = new URLSearchParams({
+				faa: '1', sat: '1', mlat: '1', flarm: '1', adsb: '1', gnd: '1', air: '1', vehicles: '1', gliders: '1', estimated: '1',
+				bounds
+			}).toString();
+			const urls = [
+				`https://data-cloud.flightradar24.com/zones/fcgi/js?${params}`,
+				`https://data-live.flightradar24.com/zones/fcgi/feed.js?${params}`
+			];
+			for (const u of urls) {
+				try {
+					const res = await fetch(u);
+					const txt = await res.text();
+					const jsonStart = txt.indexOf('{');
+					if (jsonStart >= 0) return JSON.parse(txt.substring(jsonStart));
+				} catch(_) {}
+			}
+			return {};
+		}
+
+		function applyFilters(f) {
+			const cm = category(f);
+			const showMil = document.getElementById('filterMil').checked;
+			const showUav = document.getElementById('filterUav').checked;
+			const showCivil = document.getElementById('filterCivil').checked;
+			const showHeli = document.getElementById('filterHeli').checked;
+			return (cm==='mil' && showMil) || (cm==='uav' && showUav) || (cm==='civil' && showCivil) || (cm==='heli' && showHeli);
+		}
+
+		async function refresh() {
+			const b = map.getBounds();
+			const ne = b.getNorthEast();
+			const sw = b.getSouthWest();
+			const bounds = `${sw.lat},${ne.lat},${sw.lng},${ne.lng}`.replace(/function.*\)/g,''); // guard for Leaflet lat/lng fn toString
+			const data = await fetchFR24(bounds);
+			const seen = new Set();
+			let total=0, mil=0, uav=0, heli=0, civil=0;
+			for (const k in data) {
+				if (k==='full_count' || k==='version') continue;
+				const v = data[k]; if (!Array.isArray(v) || v.length<19) continue;
+				const [hex, lat, lon, heading, alt_ft, spd_kts, squawk, radar, acType, reg, ts, origin, dest, flightNum, onGround, vSpeed, callsign, unknown, airline] = v;
+				const f = { hex, lat:+lat, lon:+lon, heading:+heading, alt_ft:+alt_ft, spd_kts:+spd_kts, squawk, radar, acType, reg, ts:+ts, origin, dest, flightNum, onGround:!!onGround, vSpeed:+vSpeed, callsign, unknown, airline };
+				flightsByHex.set(hex, f);
+				if (applyFilters(f)) addOrUpdateMarker(f);
+				seen.add(hex);
+				total++; const c = category(f); if (c==='mil') mil++; else if (c==='uav') uav++; else if (c==='heli') heli++; else civil++;
+			}
+			for (const [hex, m] of markers) { if (!seen.has(hex)) { map.removeLayer(m); markers.delete(hex); } }
+			document.getElementById('countTotal').textContent = total;
+			document.getElementById('countMil').textContent = mil;
+			document.getElementById('countUav').textContent = uav;
+			document.getElementById('countHeli').textContent = heli;
+			document.getElementById('countCivil').textContent = civil;
+		}
+
+		function init() {
+			map = L.map('map').setView([35.69, 51.33], 6);
+			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+			refresh();
+			setInterval(refresh, 8000);
+			map.on('moveend', refresh);
+			document.getElementById('refresh').addEventListener('click', refresh);
+			for (const id of ['filterMil','filterUav','filterCivil','filterHeli']) document.getElementById(id).addEventListener('change', refresh);
+			document.getElementById('ai').addEventListener('click', () => {
+				if (!selectedHex) { alert('Select a flight first.'); return; }
+				const f = flightsByHex.get(selectedHex);
+				const rows = [
+					`Hex ICAO: ${f.hex}`, `Latitude: ${f.lat}`, `Longitude: ${f.lon}`, `Heading (deg): ${f.heading}`, `Altitude (ft): ${f.alt_ft}`,
+					`Speed (kts): ${f.spd_kts}`, `Squawk: ${f.squawk}`, `Radar: ${f.radar}`, `Aircraft Type: ${f.acType}`, `Registration: ${f.reg}`,
+					`Timestamp (s): ${f.ts}`, `Origin: ${f.origin}`, `Destination: ${f.dest}`, `Flight Number: ${f.flightNum}`, `On Ground: ${f.onGround}`,
+					`Vertical Speed (ft/min): ${f.vSpeed}`, `Callsign: ${f.callsign}`, `Unknown: ${f.unknown}`, `Airline: ${f.airline}`
+				];
+				const prompt = `Analyze this real flight with 19 FR24 parameters and provide operational insights in Persian.\n\n${rows.join('\n')}`;
+				window.open('https://grok.com/?q=' + encodeURIComponent(prompt), '_blank');
+			});
+		}
+		window.addEventListener('load', init);
+	</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>UAV Tracker - Advanced Markers</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		html, body { height: 100%; margin: 0; padding: 0; }
+		#map { height: 100%; width: 100%; }
+		.marker-label { color: #fff; font: 500 12px system-ui, -apple-system, Segoe UI, Roboto, Arial; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 10px; }
+		.legend { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.65); color: #fff; padding: 8px 10px; border-radius: 6px; z-index: 2; }
+		.legend div { margin: 2px 0; }
+	</style>
+</head>
+<body>
+	<div class="legend">
+		<div><strong>UAV Tracker</strong></div>
+		<div>Drone: white icon • Heli: yellow • Military: red</div>
+	</div>
+	<div id="map"></div>
+	<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&v=beta"></script>
+	<script>
+		let map;
+		const { AdvancedMarkerElement, PinElement } = google.maps.marker || {};
+
+		const icons = {
+			drone: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M12 10a2 2 0 100 4 2 2 0 000-4zm-7-2l3 1 2-1 1 2-1 2-2-1-3 1 1-3-1-2zm14 0l-3 1-2-1-1 2 1 2 2-1 3 1-1-3 1-2zM5 17l3-1 2 1 1-2-1-2-2 1-3-1 1 3-1 2zm14 0l-3-1-2 1-1-2 1-2 2 1 3-1-1 3 1 2z"/></svg>'),
+			heli: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#ffe34d"><path d="M3 12h10a4 4 0 110 8H8a5 5 0 01-5-5v-3zm14-6h-4a1 1 0 110-2h9a1 1 0 110 2h-3v5h-2V6z"/></svg>'),
+			mil: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="#ff3b30" d="M12 2l3 5h5l-4 4 2 9-6-4-6 4 2-9-4-4h5z"/></svg>'),
+			civil: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#8ec7ff"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>')
+		};
+
+		function category(f) {
+			const t = (f.acType||'').toUpperCase();
+			if (t.includes('DRON') || t.includes('UAV') || t === 'QUAD') return 'drone';
+			if (t.includes('HELI')) return 'heli';
+			if ((f.callsign||'').startsWith('MIL')) return 'mil';
+			return 'civil';
+		}
+
+		async function fetchFR24(bounds) {
+			const params = new URLSearchParams({
+				faa: '1', sat: '1', mlat: '1', flarm: '1', adsb: '1', gnd: '1', air: '1', vehicles: '1', gliders: '1', estimated: '1',
+				bounds
+			}).toString();
+			const urls = [
+				`https://data-cloud.flightradar24.com/zones/fcgi/js?${params}`,
+				`https://data-live.flightradar24.com/zones/fcgi/feed.js?${params}`
+			];
+			for (const u of urls) {
+				try {
+					const res = await fetch(u);
+					const txt = await res.text();
+					const jsonStart = txt.indexOf('{');
+					if (jsonStart >= 0) return JSON.parse(txt.substring(jsonStart));
+				} catch(_) {}
+			}
+			return {};
+		}
+
+		const advMarkers = new Map();
+
+		function upsertAdvancedMarker(f) {
+			const cat = category(f);
+			const content = document.createElement('div');
+			content.style.display = 'flex';
+			content.style.alignItems = 'center';
+			const img = document.createElement('img');
+			img.src = icons[cat] || icons.civil;
+			img.style.width = '28px';
+			img.style.height = '28px';
+			img.style.transform = `rotate(${f.heading||0}deg)`;
+			const label = document.createElement('div');
+			label.className = 'marker-label';
+			label.textContent = f.callsign || f.reg || f.hex;
+			content.appendChild(img);
+			content.appendChild(label);
+
+			let m = advMarkers.get(f.hex);
+			if (!m) {
+				m = new google.maps.marker.AdvancedMarkerElement({
+					map,
+					position: { lat: f.lat, lng: f.lon },
+					content
+				});
+				m.addListener('click', () => {
+					const info = new google.maps.InfoWindow({
+						content: `<div style="max-width:280px">
+							<strong>${f.callsign || f.reg || f.hex}</strong><br>
+							Lat: ${f.lat.toFixed(4)} • Lon: ${f.lon.toFixed(4)}<br>
+							Alt: ${f.alt_ft ? f.alt_ft + ' ft' : '—'} • Spd: ${f.spd_kts ? f.spd_kts + ' kt' : '—'}<br>
+							Type: ${f.acType || '—'} • Reg: ${f.reg || '—'}
+						</div>`
+					});
+					info.open({ map, anchor: m });
+				});
+				advMarkers.set(f.hex, m);
+			} else {
+				m.position = { lat: f.lat, lng: f.lon };
+				m.content = content;
+			}
+		}
+
+		function clearMissing(currentHexes) {
+			for (const [hex, m] of advMarkers) {
+				if (!currentHexes.has(hex)) {
+					m.map = null;
+					advMarkers.delete(hex);
+				}
+			}
+		}
+
+		async function loop() {
+			const b = map.getBounds();
+			const ne = b.getNorthEast();
+			const sw = b.getSouthWest();
+			const bounds = `${sw.lat()},${ne.lat()},${sw.lng()},${ne.lng()}`;
+			const data = await fetchFR24(bounds);
+			const current = new Set();
+			for (const k in data) {
+				if (k === 'full_count' || k === 'version') continue;
+				const v = data[k];
+				if (!Array.isArray(v) || v.length < 19) continue;
+				const [hex, lat, lon, heading, alt_ft, spd_kts, squawk, radar, acType, reg, ts, origin, dest, flightNum, onGround, vSpeed, callsign, unknown, airline] = v;
+				const f = { hex, lat: +lat, lon: +lon, heading: +heading, alt_ft: +alt_ft, spd_kts: +spd_kts, squawk, radar, acType, reg, ts: +ts, origin, dest, flightNum, onGround: !!onGround, vSpeed: +vSpeed, callsign, unknown, airline };
+				const cat = category(f);
+				if (cat === 'drone' || cat === 'heli' || cat === 'mil') {
+					upsertAdvancedMarker(f);
+					current.add(f.hex);
+				}
+			}
+			clearMissing(current);
+			setTimeout(loop, 8000);
+		}
+
+		function init() {
+			map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.69, lng: 51.33 }, zoom: 6, mapId: 'DEMO_MAP_ID' });
+			loop();
+		}
+
+		window.initMap = init;
+	</script>
+	<script>if (typeof google !== 'undefined') { window.initMap && window.initMap(); }</script>
+</body>
+</html>
