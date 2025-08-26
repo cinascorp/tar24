@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4ISR Military Tracking System v2.0.0</title>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --primary-bg: #0a0a0a;
+            --secondary-bg: #1a1a1a;
+            --accent-green: #00ff41;
+            --accent-red: #ff0000;
+            --accent-yellow: #ffaa00;
+            --accent-blue: #0066cc;
+            --text-primary: #ffffff;
+            --text-secondary: #bfbfbf;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #071016 0%, #0a0a0a 50%, #1a1a1a 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--accent-green);
+        }
+
+        .logo i {
+            font-size: 24px;
+        }
+
+        .threat-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid var(--accent-red);
+        }
+
+        .threat-level {
+            font-weight: bold;
+            color: var(--accent-red);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-green);
+        }
+
+        .control-btn.active {
+            background: rgba(255, 0, 0, 0.2);
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .control-btn.stealth {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: var(--accent-yellow);
+            color: var(--accent-yellow);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            width: 300px;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--border-color);
+            z-index: 999;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--accent-green);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .data-source-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .data-source-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+        }
+
+        .status-indicator.offline {
+            background: var(--accent-red);
+        }
+
+        .status-indicator.warning {
+            background: var(--accent-yellow);
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-green);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Main Content */
+        .main-content {
+            position: fixed;
+            left: 300px;
+            top: 60px;
+            right: 0;
+            bottom: 0;
+            transition: left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            left: 0;
+        }
+
+        /* Map Container */
+        .map-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* View Controls */
+        .view-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .view-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .view-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-green);
+        }
+
+        .view-btn.active {
+            background: var(--accent-green);
+            color: var(--primary-bg);
+        }
+
+        /* Layer Controls */
+        .layer-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .layer-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Flight Info Panel */
+        .flight-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .flight-info.show {
+            display: block;
+        }
+
+        .flight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .flight-title {
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .flight-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .flight-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Notifications */
+        .notification-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1001;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: rgba(10, 10, 10, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success {
+            border-color: var(--accent-green);
+        }
+
+        .notification.warning {
+            border-color: var(--accent-yellow);
+        }
+
+        .notification.danger {
+            border-color: var(--accent-red);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                left: 0;
+            }
+
+            .header {
+                padding: 0 10px;
+            }
+
+            .logo {
+                font-size: 16px;
+            }
+
+            .control-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--primary-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Custom Map Styles */
+        .leaflet-container {
+            background: var(--primary-bg);
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(10, 10, 10, 0.8) !important;
+            color: var(--text-secondary) !important;
+        }
+
+        .leaflet-control-zoom {
+            background: rgba(10, 10, 10, 0.8) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .leaflet-control-zoom a {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing C4ISR System...</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <i class="fas fa-satellite"></i>
+                <span>C4ISR v2.0.0</span>
+            </div>
+            <div class="threat-indicator" id="threatIndicator">
+                <i class="fas fa-shield-alt"></i>
+                <span class="threat-level" id="threatLevel">LOW</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="control-btn" id="gpsJammingBtn" title="GPS Jamming">
+                <i class="fas fa-satellite-dish"></i>
+                <span>GPS JAM</span>
+            </button>
+            <button class="control-btn stealth" id="stealthBtn" title="Stealth Mode">
+                <i class="fas fa-user-secret"></i>
+                <span>STEALTH</span>
+            </button>
+            <button class="control-btn" id="sidebarToggle" title="Toggle Sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Data Sources Section -->
+        <div class="sidebar-section">
+            <div class="section-title">
+                <i class="fas fa-database"></i>
+                Data Sources
+            </div>
+            <div class="data-source-item">
+                <div class="data-source-info">
+                    <div class="status-indicator" id="fr24Status"></div>
+                    <span>FlightRadar24</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="fr24Toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="data-source-item">
+                <div class="data-source-info">
+                    <div class="status-indicator" id="openskyStatus"></div>
+                    <span>OpenSky Network</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="openskyToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="data-source-item">
+                <div class="data-source-info">
+                    <div class="status-indicator" id="adsbStatus"></div>
+                    <span>ADSB.lol</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="adsbToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="data-source-item">
+                <div class="data-source-info">
+                    <div class="status-indicator" id="kiwisdrStatus"></div>
+                    <span>KiwiSDR</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="kiwisdrToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="sidebar-section">
+            <div class="section-title">
+                <i class="fas fa-filter"></i>
+                Filters
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Altitude Range (ft)</label>
+                <input type="text" class="filter-input" id="altitudeFilter" placeholder="0-50000">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Speed Range (kts)</label>
+                <input type="text" class="filter-input" id="speedFilter" placeholder="0-1000">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Aircraft Type</label>
+                <select class="filter-input" id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="military">Military</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="private">Private</option>
+                    <option value="uav">UAV</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="sidebar-section">
+            <div class="section-title">
+                <i class="fas fa-chart-line"></i>
+                System Status
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Active Flights:</span>
+                <span class="detail-value" id="activeFlights">0</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Memory Usage:</span>
+                <span class="detail-value" id="memoryUsage">0 MB</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Update Rate:</span>
+                <span class="detail-value" id="updateRate">0 Hz</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- View Controls -->
+            <div class="view-controls">
+                <button class="view-btn active" id="map2dBtn" title="2D Map">
+                    <i class="fas fa-map"></i>
+                </button>
+                <button class="view-btn" id="globe3dBtn" title="3D Globe">
+                    <i class="fas fa-globe"></i>
+                </button>
+            </div>
+
+            <!-- Layer Controls -->
+            <div class="layer-controls">
+                <div class="section-title">
+                    <i class="fas fa-layers"></i>
+                    Map Layers
+                </div>
+                <div class="layer-item">
+                    <span>Satellite</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="satelliteLayer">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-item">
+                    <span>Terrain</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="terrainLayer">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-item">
+                    <span>Weather</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="weatherLayer">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Flight Info Panel -->
+            <div class="flight-info" id="flightInfo">
+                <div class="flight-header">
+                    <div class="flight-title" id="flightTitle">Flight Information</div>
+                    <button class="flight-close" id="flightClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="flight-details" id="flightDetails">
+                    <!-- Flight details will be populated here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/language.js"></script>
+    <script src="js/data-sources.js"></script>
+    <script src="js/threat-detection.js"></script>
+    <script src="js/gps-jamming.js"></script>
+    <script src="js/map-controller.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/flight-tracker.js"></script>
+    <script src="js/3d-globe.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
