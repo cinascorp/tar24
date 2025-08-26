@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4ISR Military Tracking System v3.0.0 - Advanced Drone Operations</title>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-dark.min.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.2.3/adapter.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-bg: #000510;
+            --secondary-bg: #0a0f1a;
+            --tertiary-bg: #151a25;
+            --accent-green: #00ff41;
+            --accent-red: #ff1744;
+            --accent-orange: #ff9800;
+            --accent-blue: #2196f3;
+            --accent-purple: #9c27b0;
+            --accent-cyan: #00bcd4;
+            --text-primary: #ffffff;
+            --text-secondary: #b0bec5;
+            --text-tertiary: #607d8b;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+            --glow-green: 0 0 20px rgba(0, 255, 65, 0.4);
+            --glow-red: 0 0 20px rgba(255, 23, 68, 0.4);
+            --glow-blue: 0 0 20px rgba(33, 150, 243, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: radial-gradient(ellipse at top, #0a1426 0%, #000510 50%, #000000 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Military Grid Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header with Military HUD Style */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(10, 15, 26, 0.95), rgba(0, 5, 16, 0.95));
+            backdrop-filter: blur(15px);
+            border-bottom: 2px solid var(--accent-green);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent-green);
+            text-shadow: var(--glow-green);
+            letter-spacing: 2px;
+        }
+
+        .version-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .version {
+            font-size: 14px;
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .build-info {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            opacity: 0.8;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            font-size: 12px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: var(--accent-green);
+            box-shadow: var(--glow-green);
+        }
+
+        .status-indicator.threat {
+            background: var(--accent-red);
+            box-shadow: var(--glow-red);
+            animation: pulse 0.5s infinite;
+        }
+
+        .status-indicator.warning {
+            background: var(--accent-orange);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        /* Main Container */
+        .main-container {
+            display: flex;
+            height: 100vh;
+            padding-top: 80px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: linear-gradient(180deg, var(--secondary-bg), var(--primary-bg));
+            border-right: 1px solid var(--accent-green);
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Military Controls */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: var(--accent-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            border-radius: 5px;
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 12px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-red), #d32f2f);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(255, 23, 68, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--accent-orange), #f57c00);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-green), #388e3c);
+        }
+
+        /* Operation Buttons */
+        .operation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .operation-btn {
+            padding: 15px 10px;
+            font-size: 11px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .operation-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .operation-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: var(--primary-bg);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: var(--primary-bg);
+        }
+
+        /* HUD Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0, 5, 16, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--accent-green);
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 500;
+            box-shadow: var(--shadow);
+        }
+
+        .hud-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .hud-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+        }
+
+        .hud-label {
+            color: var(--text-secondary);
+        }
+
+        .hud-value {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        /* Bottom Info Panel */
+        .info-panel {
+            position: absolute;
+            bottom: 0;
+            left: 350px;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(180deg, transparent, rgba(0, 5, 16, 0.95));
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--accent-green);
+            padding: 20px;
+            z-index: 500;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .info-section {
+            flex: 1;
+        }
+
+        .info-title {
+            font-size: 12px;
+            color: var(--accent-cyan);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .info-content {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Threat Alert */
+        .threat-alert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(255, 23, 68, 0.9), rgba(211, 47, 47, 0.9));
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid var(--accent-red);
+            z-index: 1500;
+            text-align: center;
+            box-shadow: var(--shadow), var(--glow-red);
+            display: none;
+        }
+
+        .alert-icon {
+            font-size: 48px;
+            color: var(--accent-red);
+            margin-bottom: 15px;
+            animation: pulse 0.5s infinite;
+        }
+
+        .alert-title {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .alert-message {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* Frequency Monitor */
+        .frequency-monitor {
+            background: rgba(0, 5, 16, 0.8);
+            border: 1px solid var(--accent-cyan);
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .frequency-display {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: var(--accent-green);
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            margin-bottom: 10px;
+            border: 1px solid var(--accent-green);
+        }
+
+        .frequency-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+
+        .freq-btn {
+            padding: 8px;
+            font-size: 10px;
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .freq-btn:hover {
+            background: var(--accent-blue);
+        }
+
+        /* SDR Integration Panel */
+        .sdr-panel {
+            background: rgba(21, 26, 37, 0.9);
+            border: 1px solid var(--accent-purple);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .sdr-title {
+            color: var(--accent-purple);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .sdr-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+                position: absolute;
+                top: 80px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-container {
+                flex-direction: column;
+            }
+
+            .map-container {
+                height: 60vh;
+            }
+
+            .hud-overlay {
+                width: 250px;
+                top: 10px;
+                right: 10px;
+                padding: 15px;
+            }
+
+            .info-panel {
+                left: 0;
+                height: auto;
+                padding: 15px;
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Custom Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--secondary-bg);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--accent-green);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">C4ISR v3</div>
+            <div class="version-info">
+                <div class="version">VERSION 3.0.0</div>
+                <div class="build-info">BUILD: ADVANCED-DRONE-OPS</div>
+            </div>
+        </div>
+        
+        <div class="status-indicators">
+            <div class="status-item">
+                <div class="status-indicator online"></div>
+                <span>HTTP/3 ACTIVE</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator online"></div>
+                <span>SDR ONLINE</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator warning"></div>
+                <span>THREATS: <span id="threatCount">0</span></span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator online"></div>
+                <span>TRACKING: <span id="trackingCount">0</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Target Acquisition -->
+            <div class="sidebar-section">
+                <div class="section-title">🎯 Target Acquisition</div>
+                <div class="control-group">
+                    <label class="control-label">Frequency Range (MHz)</label>
+                    <input type="text" class="control-input" id="freqRange" value="400-6000" placeholder="400-6000">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Detection Sensitivity</label>
+                    <input type="range" class="control-input" id="sensitivity" min="1" max="10" value="7">
+                </div>
+                <button class="btn btn-success" onclick="startScanning()">
+                    <i class="fas fa-radar"></i> START SCAN
+                </button>
+            </div>
+
+            <!-- Military Operations -->
+            <div class="sidebar-section">
+                <div class="section-title">⚔️ Military Operations</div>
+                <div class="operation-grid">
+                    <button class="btn operation-btn btn-danger" onclick="jamTarget()">
+                        <i class="fas fa-broadcast-tower"></i><br>JAM DRONE
+                    </button>
+                    <button class="btn operation-btn btn-danger" onclick="captureTarget()">
+                        <i class="fas fa-hand-paper"></i><br>CAPTURE
+                    </button>
+                    <button class="btn operation-btn btn-danger" onclick="destroyTarget()">
+                        <i class="fas fa-explosion"></i><br>DESTROY
+                    </button>
+                    <button class="btn operation-btn btn-warning" onclick="spoofData()">
+                        <i class="fas fa-mask"></i><br>SPOOF DATA
+                    </button>
+                </div>
+                
+                <div class="control-group" style="margin-top: 20px;">
+                    <label class="control-label">Target Coordinates</label>
+                    <input type="text" class="control-input" id="targetCoords" placeholder="LAT, LON">
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Operation Zone</label>
+                    <select class="control-input" id="operationZone">
+                        <option value="ocean">Ocean Territory</option>
+                        <option value="desert">Desert Region</option>
+                        <option value="urban">Urban Area</option>
+                        <option value="border">Border Zone</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- SDR Integration -->
+            <div class="sidebar-section">
+                <div class="section-title">📡 SDR Integration</div>
+                <div class="sdr-panel">
+                    <div class="sdr-title">KiwiSDR + GNU Radio</div>
+                    <div class="frequency-display" id="currentFreq">433.920 MHz</div>
+                    <div class="sdr-controls">
+                        <button class="btn freq-btn" onclick="tuneFrequency(433.92)">433.92</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(868.0)">868.0</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(915.0)">915.0</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(1090.0)">1090.0</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(1575.42)">GPS L1</button>
+                        <button class="btn freq-btn" onclick="tuneFrequency(2400.0)">2.4 GHz</button>
+                    </div>
+                </div>
+                
+                <div class="control-group" style="margin-top: 15px;">
+                    <label class="control-label">Signal Strength</label>
+                    <div id="signalStrength" style="height: 20px; background: linear-gradient(90deg, var(--accent-green) 70%, transparent 70%); border: 1px solid var(--border-color); border-radius: 3px;"></div>
+                </div>
+            </div>
+
+            <!-- Stealth Mode -->
+            <div class="sidebar-section">
+                <div class="section-title">🥷 Stealth Operations</div>
+                <div class="control-group">
+                    <button class="btn btn-warning" onclick="enableStealth()" id="stealthBtn">
+                        <i class="fas fa-user-secret"></i> ENABLE STEALTH
+                    </button>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Spoofing Status</label>
+                    <div id="spoofStatus" style="color: var(--accent-red);">INACTIVE</div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">GPS Jamming Range</label>
+                    <input type="range" class="control-input" id="jammingRange" min="1" max="50" value="10">
+                    <span id="jamRangeValue" style="color: var(--accent-cyan);">10 km</span>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="sidebar-section">
+                <div class="section-title">💻 System Status</div>
+                <div class="control-group">
+                    <div style="font-size: 12px; color: var(--text-secondary);">
+                        <div>Platform: <span style="color: var(--accent-cyan);">Kali Linux / Android</span></div>
+                        <div>Protocol: <span style="color: var(--accent-green);">HTTP/3 + QUIC</span></div>
+                        <div>Encryption: <span style="color: var(--accent-green);">AES-256</span></div>
+                        <div>Location: <span style="color: var(--accent-orange);" id="userLocation">Acquiring...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- HUD Overlay -->
+            <div class="hud-overlay">
+                <div class="hud-title">Mission Control HUD</div>
+                <div class="hud-item">
+                    <span class="hud-label">Active Targets:</span>
+                    <span class="hud-value" id="activeTargets">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Threat Level:</span>
+                    <span class="hud-value" id="threatLevel" style="color: var(--accent-green);">LOW</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Signal Quality:</span>
+                    <span class="hud-value" id="signalQuality">98%</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Network Latency:</span>
+                    <span class="hud-value" id="networkLatency">12ms</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Encryption:</span>
+                    <span class="hud-value" style="color: var(--accent-green);">ACTIVE</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Stealth Mode:</span>
+                    <span class="hud-value" id="stealthStatus" style="color: var(--accent-red);">DISABLED</span>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <div class="info-section">
+                    <div class="info-title">Current Operation</div>
+                    <div class="info-content" id="currentOperation">Surveillance Mode</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-title">Active Frequency</div>
+                    <div class="info-content" id="activeFrequency">433.920 MHz</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-title">Last Detection</div>
+                    <div class="info-content" id="lastDetection">No threats detected</div>
+                </div>
+                <div class="info-section">
+                    <div class="info-title">Mission Timer</div>
+                    <div class="info-content" id="missionTimer">00:00:00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Threat Alert Modal -->
+    <div id="threatAlert" class="threat-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-title">HOSTILE DRONE DETECTED</div>
+        <div class="alert-message" id="alertMessage">Unidentified aerial vehicle detected in restricted airspace</div>
+        <button class="btn btn-danger" onclick="closeAlert()">ACKNOWLEDGE</button>
+        <button class="btn btn-warning" onclick="engageTarget()">ENGAGE TARGET</button>
+    </div>
+
+    <script>
+        // Global variables
+        let map;
+        let detectedTargets = [];
+        let activeOperations = [];
+        let stealthMode = false;
+        let scanningActive = false;
+        let missionStartTime = Date.now();
+        let threatCount = 0;
+        let trackingCount = 0;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSystem();
+        });
+
+        async function initializeSystem() {
+            try {
+                // Show loading screen
+                showLoading();
+                
+                // Initialize HTTP/3 connection
+                await initializeHTTP3();
+                
+                // Initialize map
+                initializeMap();
+                
+                // Initialize SDR systems
+                initializeSDR();
+                
+                // Start background services
+                startBackgroundServices();
+                
+                // Get user location
+                await getUserLocation();
+                
+                // Hide loading screen
+                hideLoading();
+                
+                console.log('C4ISR v3 System initialized successfully');
+            } catch (error) {
+                console.error('System initialization failed:', error);
+                alert('System initialization failed. Please check your connection and try again.');
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function initializeHTTP3() {
+            // Simulate HTTP/3 + QUIC initialization
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log('HTTP/3 + QUIC protocol initialized');
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        function initializeMap() {
+            // Initialize Leaflet map with dark military theme
+            map = L.map('map', {
+                center: [35.6892, 51.3890], // Tehran coordinates as default
+                zoom: 8,
+                zoomControl: false,
+                attributionControl: false
+            });
+
+            // Add dark tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: 'C4ISR Military System v3.0',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add custom zoom control
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+
+            // Initialize global flight tracking
+            initializeGlobalFlightTracking();
+        }
+
+        function initializeGlobalFlightTracking() {
+            // Simulate global flight data (would connect to real APIs in production)
+            const globalFlights = [
+                { id: 'IR701', lat: 35.6892, lng: 51.3890, alt: 35000, type: 'commercial', heading: 270 },
+                { id: 'QR102', lat: 35.7, lng: 51.4, alt: 37000, type: 'commercial', heading: 180 },
+                { id: 'UNKNOWN', lat: 35.65, lng: 51.35, alt: 500, type: 'drone', heading: 90, threat: true },
+                { id: 'TK879', lat: 35.72, lng: 51.42, alt: 39000, type: 'commercial', heading: 45 }
+            ];
+
+            globalFlights.forEach(flight => {
+                addFlightToMap(flight);
+            });
+
+            // Start real-time updates
+            setInterval(updateFlightPositions, 5000);
+        }
+
+        function addFlightToMap(flight) {
+            let icon, color;
+            
+            if (flight.type === 'drone' && flight.threat) {
+                icon = '🚁';
+                color = '#ff1744';
+                threatCount++;
+            } else if (flight.type === 'drone') {
+                icon = '🚁';
+                color = '#ff9800';
+            } else {
+                icon = '✈️';
+                color = '#2196f3';
+            }
+
+            const marker = L.marker([flight.lat, flight.lng], {
+                icon: L.divIcon({
+                    html: `<div style="color: ${color}; font-size: 20px; text-align: center;">${icon}</div>`,
+                    className: 'flight-marker',
+                    iconSize: [30, 30]
+                })
+            }).addTo(map);
+
+            marker.bindPopup(`
+                <div style="background: var(--primary-bg); color: var(--text-primary); padding: 10px; border-radius: 5px;">
+                    <strong>Flight ID:</strong> ${flight.id}<br>
+                    <strong>Type:</strong> ${flight.type}<br>
+                    <strong>Altitude:</strong> ${flight.alt} ft<br>
+                    <strong>Heading:</strong> ${flight.heading}°<br>
+                    ${flight.threat ? '<strong style="color: var(--accent-red);">⚠️ THREAT DETECTED</strong>' : ''}
+                </div>
+            `);
+
+            if (flight.threat) {
+                showThreatAlert(flight);
+            }
+
+            trackingCount++;
+            updateCounters();
+        }
+
+        function initializeSDR() {
+            // Initialize SDR systems (KiwiSDR + GNU Radio simulation)
+            console.log('Initializing SDR systems...');
+            
+            // Start frequency monitoring
+            startFrequencyMonitoring();
+            
+            // Initialize signal processing
+            initializeSignalProcessing();
+        }
+
+        function startFrequencyMonitoring() {
+            setInterval(() => {
+                // Simulate signal strength variations
+                const signalStrength = Math.random() * 100;
+                updateSignalStrength(signalStrength);
+                
+                // Random frequency scanning
+                if (scanningActive) {
+                    const frequencies = [433.92, 868.0, 915.0, 1090.0, 1575.42, 2400.0];
+                    const randomFreq = frequencies[Math.floor(Math.random() * frequencies.length)];
+                    document.getElementById('currentFreq').textContent = randomFreq.toFixed(2) + ' MHz';
+                }
+            }, 2000);
+        }
+
+        function initializeSignalProcessing() {
+            // Simulate GNU Radio signal processing
+            console.log('GNU Radio signal processing initialized');
+        }
+
+        function startBackgroundServices() {
+            // Start mission timer
+            startMissionTimer();
+            
+            // Start network monitoring
+            startNetworkMonitoring();
+            
+            // Start threat monitoring
+            startThreatMonitoring();
+        }
+
+        function startMissionTimer() {
+            setInterval(() => {
+                const elapsed = Date.now() - missionStartTime;
+                const hours = Math.floor(elapsed / 3600000);
+                const minutes = Math.floor((elapsed % 3600000) / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                
+                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('missionTimer').textContent = timeString;
+            }, 1000);
+        }
+
+        function startNetworkMonitoring() {
+            setInterval(() => {
+                // Simulate network latency
+                const latency = Math.floor(Math.random() * 50) + 5;
+                document.getElementById('networkLatency').textContent = latency + 'ms';
+                
+                // Simulate signal quality
+                const quality = Math.floor(Math.random() * 20) + 80;
+                document.getElementById('signalQuality').textContent = quality + '%';
+            }, 3000);
+        }
+
+        function startThreatMonitoring() {
+            setInterval(() => {
+                // Random threat generation for demo
+                if (Math.random() < 0.1) { // 10% chance every interval
+                    generateRandomThreat();
+                }
+            }, 30000); // Check every 30 seconds
+        }
+
+        async function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const lat = position.coords.latitude.toFixed(4);
+                        const lng = position.coords.longitude.toFixed(4);
+                        document.getElementById('userLocation').textContent = `${lat}, ${lng}`;
+                        map.setView([position.coords.latitude, position.coords.longitude], 10);
+                    },
+                    error => {
+                        console.warn('Location access denied:', error);
+                        document.getElementById('userLocation').textContent = 'Location Denied';
+                    }
+                );
+            }
+        }
+
+        // Military Operations Functions
+        function startScanning() {
+            scanningActive = !scanningActive;
+            const btn = event.target;
+            
+            if (scanningActive) {
+                btn.innerHTML = '<i class="fas fa-stop"></i> STOP SCAN';
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-success');
+                document.getElementById('currentOperation').textContent = 'Active Scanning';
+            } else {
+                btn.innerHTML = '<i class="fas fa-radar"></i> START SCAN';
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-danger');
+                document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+            }
+        }
+
+        function jamTarget() {
+            if (detectedTargets.length === 0) {
+                alert('No targets detected for jamming operation');
+                return;
+            }
+            
+            const confirmation = confirm('Initiate jamming operation on detected targets?');
+            if (confirmation) {
+                document.getElementById('currentOperation').textContent = 'JAMMING ACTIVE';
+                document.getElementById('lastDetection').textContent = 'Target jammed at ' + new Date().toLocaleTimeString();
+                
+                // Simulate jamming effect
+                setTimeout(() => {
+                    alert('Jamming operation completed. Target communications disrupted.');
+                    document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                }, 3000);
+            }
+        }
+
+        function captureTarget() {
+            if (detectedTargets.length === 0) {
+                alert('No targets available for capture operation');
+                return;
+            }
+            
+            const confirmation = confirm('Initiate drone capture sequence?');
+            if (confirmation) {
+                document.getElementById('currentOperation').textContent = 'CAPTURE SEQUENCE';
+                document.getElementById('lastDetection').textContent = 'Capture initiated at ' + new Date().toLocaleTimeString();
+                
+                setTimeout(() => {
+                    alert('Target captured successfully. Redirecting to secure landing zone.');
+                    document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                }, 5000);
+            }
+        }
+
+        function destroyTarget() {
+            if (detectedTargets.length === 0) {
+                alert('No hostile targets detected for destruction');
+                return;
+            }
+            
+            const confirmation = confirm('⚠️ LETHAL FORCE AUTHORIZED ⚠️\nInitiate target destruction sequence?');
+            if (confirmation) {
+                document.getElementById('currentOperation').textContent = 'DESTRUCTION SEQUENCE';
+                document.getElementById('threatLevel').textContent = 'CRITICAL';
+                document.getElementById('threatLevel').style.color = 'var(--accent-red)';
+                
+                setTimeout(() => {
+                    alert('Target neutralized. Threat eliminated.');
+                    document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                    document.getElementById('threatLevel').textContent = 'LOW';
+                    document.getElementById('threatLevel').style.color = 'var(--accent-green)';
+                }, 4000);
+            }
+        }
+
+        function spoofData() {
+            const confirmation = confirm('Enable data spoofing for military concealment?');
+            if (confirmation) {
+                document.getElementById('spoofStatus').textContent = 'ACTIVE';
+                document.getElementById('spoofStatus').style.color = 'var(--accent-green)';
+                document.getElementById('currentOperation').textContent = 'STEALTH ACTIVE';
+                
+                setTimeout(() => {
+                    alert('Data spoofing active. Military assets concealed from detection.');
+                }, 2000);
+            }
+        }
+
+        function enableStealth() {
+            stealthMode = !stealthMode;
+            const btn = document.getElementById('stealthBtn');
+            const status = document.getElementById('stealthStatus');
+            
+            if (stealthMode) {
+                btn.innerHTML = '<i class="fas fa-user-secret"></i> DISABLE STEALTH';
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-warning');
+                status.textContent = 'ENABLED';
+                status.style.color = 'var(--accent-green)';
+                document.getElementById('currentOperation').textContent = 'STEALTH MODE';
+            } else {
+                btn.innerHTML = '<i class="fas fa-user-secret"></i> ENABLE STEALTH';
+                btn.classList.add('btn-warning');
+                btn.classList.remove('btn-danger');
+                status.textContent = 'DISABLED';
+                status.style.color = 'var(--accent-red)';
+                document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+            }
+        }
+
+        // SDR Functions
+        function tuneFrequency(freq) {
+            document.getElementById('currentFreq').textContent = freq.toFixed(2) + ' MHz';
+            document.getElementById('activeFrequency').textContent = freq.toFixed(2) + ' MHz';
+            
+            // Simulate frequency-specific operations
+            if (freq === 1575.42) {
+                alert('GPS L1 frequency selected. GPS jamming capabilities enabled.');
+            } else if (freq === 2400.0) {
+                alert('2.4 GHz selected. Drone control frequency monitoring active.');
+            }
+        }
+
+        function updateSignalStrength(strength) {
+            const strengthBar = document.getElementById('signalStrength');
+            strengthBar.style.background = `linear-gradient(90deg, var(--accent-green) ${strength}%, transparent ${strength}%)`;
+        }
+
+        // Threat Management
+        function showThreatAlert(threat) {
+            document.getElementById('alertMessage').textContent = 
+                `${threat.type.toUpperCase()} detected at coordinates ${threat.lat.toFixed(4)}, ${threat.lng.toFixed(4)}`;
+            document.getElementById('threatAlert').style.display = 'block';
+        }
+
+        function closeAlert() {
+            document.getElementById('threatAlert').style.display = 'none';
+        }
+
+        function engageTarget() {
+            closeAlert();
+            document.getElementById('currentOperation').textContent = 'TARGET ENGAGEMENT';
+            setTimeout(() => {
+                alert('Target engagement protocols activated. Awaiting further orders.');
+                document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+            }, 3000);
+        }
+
+        function generateRandomThreat() {
+            const threats = [
+                { id: 'UNKNOWN-' + Math.floor(Math.random() * 1000), type: 'drone', threat: true },
+                { id: 'HOSTILE-' + Math.floor(Math.random() * 1000), type: 'aircraft', threat: true }
+            ];
+            
+            const threat = threats[Math.floor(Math.random() * threats.length)];
+            threat.lat = 35.6 + (Math.random() - 0.5) * 0.2;
+            threat.lng = 51.3 + (Math.random() - 0.5) * 0.2;
+            threat.alt = Math.floor(Math.random() * 10000) + 500;
+            threat.heading = Math.floor(Math.random() * 360);
+            
+            addFlightToMap(threat);
+            detectedTargets.push(threat);
+        }
+
+        function updateFlightPositions() {
+            // Simulate real-time flight position updates
+            document.querySelectorAll('.flight-marker').forEach(marker => {
+                // Add small random movements to simulate real-time tracking
+                const randomLat = (Math.random() - 0.5) * 0.001;
+                const randomLng = (Math.random() - 0.5) * 0.001;
+                // In a real implementation, this would update marker positions
+            });
+        }
+
+        function updateCounters() {
+            document.getElementById('threatCount').textContent = threatCount;
+            document.getElementById('trackingCount').textContent = trackingCount;
+            document.getElementById('activeTargets').textContent = detectedTargets.length;
+        }
+
+        // Jamming Range Control
+        document.getElementById('jammingRange').addEventListener('input', function() {
+            document.getElementById('jamRangeValue').textContent = this.value + ' km';
+        });
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        startScanning();
+                        break;
+                    case 'j':
+                        e.preventDefault();
+                        jamTarget();
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        captureTarget();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        destroyTarget();
+                        break;
+                }
+            }
+        });
+
+        // Network status monitoring
+        window.addEventListener('online', () => {
+            console.log('Network connection restored');
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Network connection lost');
+            alert('Network connection lost. Switching to offline mode.');
+        });
+
+        // Error handling
+        window.addEventListener('error', function(e) {
+            console.error('System error:', e.error);
+        });
+    </script>
+</body>
+</html>
