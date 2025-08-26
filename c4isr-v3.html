@@ -84,6 +84,83 @@
             padding: 0 30px;
         }
 
+        .header-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .language-switcher {
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .lang-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .lang-btn.active {
+            background: var(--accent-green);
+            color: var(--primary-bg);
+            box-shadow: var(--glow-green);
+        }
+
+        /* RTL Support */
+        [dir="rtl"] {
+            text-align: right;
+        }
+
+        [dir="rtl"] .header-left {
+            order: 3;
+        }
+
+        [dir="rtl"] .header-center {
+            order: 2;
+        }
+
+        [dir="rtl"] .status-indicators {
+            order: 1;
+        }
+
+        [dir="rtl"] .sidebar {
+            right: 0;
+            left: auto;
+            border-right: none;
+            border-left: 1px solid var(--accent-green);
+        }
+
+        [dir="rtl"] .map-container {
+            margin-right: 350px;
+            margin-left: 0;
+        }
+
+        [dir="rtl"] .hud-overlay {
+            right: auto;
+            left: 20px;
+        }
+
+        [dir="rtl"] .info-panel {
+            right: 350px;
+            left: 0;
+        }
+
         .header::before {
             content: '';
             position: absolute;
@@ -593,22 +670,30 @@
             </div>
         </div>
         
+        <div class="header-center">
+            <!-- Language Switcher -->
+            <div class="language-switcher">
+                <button class="lang-btn" onclick="setLanguage('en')" id="langEnBtn">EN</button>
+                <button class="lang-btn" onclick="setLanguage('fa')" id="langFaBtn">فا</button>
+            </div>
+        </div>
+        
         <div class="status-indicators">
             <div class="status-item">
                 <div class="status-indicator online"></div>
-                <span>HTTP/3 ACTIVE</span>
+                <span class="status-text" data-lang="statusHTTP3">HTTP/3 ACTIVE</span>
             </div>
             <div class="status-item">
                 <div class="status-indicator online"></div>
-                <span>SDR ONLINE</span>
+                <span class="status-text" data-lang="statusSDR">SDR ONLINE</span>
             </div>
             <div class="status-item">
                 <div class="status-indicator warning"></div>
-                <span>THREATS: <span id="threatCount">0</span></span>
+                <span class="status-text" data-lang="statusThreats">THREATS</span>: <span id="threatCount">0</span>
             </div>
             <div class="status-item">
                 <div class="status-indicator online"></div>
-                <span>TRACKING: <span id="trackingCount">0</span></span>
+                <span class="status-text" data-lang="statusTracking">TRACKING</span>: <span id="trackingCount">0</span>
             </div>
         </div>
     </div>
@@ -619,50 +704,50 @@
         <div class="sidebar">
             <!-- Target Acquisition -->
             <div class="sidebar-section">
-                <div class="section-title">🎯 Target Acquisition</div>
+                <div class="section-title" data-lang="targetAcquisition">🎯 Target Acquisition</div>
                 <div class="control-group">
-                    <label class="control-label">Frequency Range (MHz)</label>
+                    <label class="control-label" data-lang="frequencyRange">Frequency Range (MHz)</label>
                     <input type="text" class="control-input" id="freqRange" value="400-6000" placeholder="400-6000">
                 </div>
                 <div class="control-group">
-                    <label class="control-label">Detection Sensitivity</label>
+                    <label class="control-label" data-lang="detectionSensitivity">Detection Sensitivity</label>
                     <input type="range" class="control-input" id="sensitivity" min="1" max="10" value="7">
                 </div>
-                <button class="btn btn-success" onclick="startScanning()">
-                    <i class="fas fa-radar"></i> START SCAN
+                <button class="btn btn-success" id="startScanBtn" onclick="startScanning()">
+                    <i class="fas fa-radar"></i> <span data-lang="startScan">START SCAN</span>
                 </button>
             </div>
 
             <!-- Military Operations -->
             <div class="sidebar-section">
-                <div class="section-title">⚔️ Military Operations</div>
+                <div class="section-title" data-lang="militaryOps">⚔️ Military Operations</div>
                 <div class="operation-grid">
                     <button class="btn operation-btn btn-danger" onclick="jamTarget()">
-                        <i class="fas fa-broadcast-tower"></i><br>JAM DRONE
+                        <i class="fas fa-broadcast-tower"></i><br><span data-lang="jamDrone">JAM DRONE</span>
                     </button>
                     <button class="btn operation-btn btn-danger" onclick="captureTarget()">
-                        <i class="fas fa-hand-paper"></i><br>CAPTURE
+                        <i class="fas fa-hand-paper"></i><br><span data-lang="capture">CAPTURE</span>
                     </button>
                     <button class="btn operation-btn btn-danger" onclick="destroyTarget()">
-                        <i class="fas fa-explosion"></i><br>DESTROY
+                        <i class="fas fa-explosion"></i><br><span data-lang="destroy">DESTROY</span>
                     </button>
                     <button class="btn operation-btn btn-warning" onclick="spoofData()">
-                        <i class="fas fa-mask"></i><br>SPOOF DATA
+                        <i class="fas fa-mask"></i><br><span data-lang="spoofData">SPOOF DATA</span>
                     </button>
                 </div>
                 
                 <div class="control-group" style="margin-top: 20px;">
-                    <label class="control-label">Target Coordinates</label>
+                    <label class="control-label" data-lang="targetCoords">Target Coordinates</label>
                     <input type="text" class="control-input" id="targetCoords" placeholder="LAT, LON">
                 </div>
                 
                 <div class="control-group">
-                    <label class="control-label">Operation Zone</label>
+                    <label class="control-label" data-lang="operationZone">Operation Zone</label>
                     <select class="control-input" id="operationZone">
-                        <option value="ocean">Ocean Territory</option>
-                        <option value="desert">Desert Region</option>
-                        <option value="urban">Urban Area</option>
-                        <option value="border">Border Zone</option>
+                        <option value="ocean" data-lang="oceanTerritory">Ocean Territory</option>
+                        <option value="desert" data-lang="desertRegion">Desert Region</option>
+                        <option value="urban" data-lang="urbanArea">Urban Area</option>
+                        <option value="border" data-lang="borderZone">Border Zone</option>
                     </select>
                 </div>
             </div>
@@ -728,49 +813,49 @@
             
             <!-- HUD Overlay -->
             <div class="hud-overlay">
-                <div class="hud-title">Mission Control HUD</div>
+                <div class="hud-title" data-lang="missionControlHUD">Mission Control HUD</div>
                 <div class="hud-item">
-                    <span class="hud-label">Active Targets:</span>
+                    <span class="hud-label" data-lang="activeTargets">Active Targets:</span>
                     <span class="hud-value" id="activeTargets">0</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Threat Level:</span>
-                    <span class="hud-value" id="threatLevel" style="color: var(--accent-green);">LOW</span>
+                    <span class="hud-label" data-lang="threatLevel">Threat Level:</span>
+                    <span class="hud-value" id="threatLevel" style="color: var(--accent-green);" data-lang="threatLow">LOW</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Signal Quality:</span>
+                    <span class="hud-label" data-lang="signalQuality">Signal Quality:</span>
                     <span class="hud-value" id="signalQuality">98%</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Network Latency:</span>
+                    <span class="hud-label" data-lang="networkLatency">Network Latency:</span>
                     <span class="hud-value" id="networkLatency">12ms</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Encryption:</span>
+                    <span class="hud-label" data-lang="encryption">Encryption:</span>
                     <span class="hud-value" style="color: var(--accent-green);">ACTIVE</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Stealth Mode:</span>
-                    <span class="hud-value" id="stealthStatus" style="color: var(--accent-red);">DISABLED</span>
+                    <span class="hud-label" data-lang="stealthStatus">Stealth Mode:</span>
+                    <span class="hud-value" id="stealthStatusDisplay" style="color: var(--accent-red);">DISABLED</span>
                 </div>
             </div>
 
             <!-- Info Panel -->
             <div class="info-panel">
                 <div class="info-section">
-                    <div class="info-title">Current Operation</div>
-                    <div class="info-content" id="currentOperation">Surveillance Mode</div>
+                    <div class="info-title" data-lang="currentOperation">Current Operation</div>
+                    <div class="info-content" id="currentOperation" data-lang="surveillanceMode">Surveillance Mode</div>
                 </div>
                 <div class="info-section">
-                    <div class="info-title">Active Frequency</div>
+                    <div class="info-title" data-lang="activeFrequency">Active Frequency</div>
                     <div class="info-content" id="activeFrequency">433.920 MHz</div>
                 </div>
                 <div class="info-section">
-                    <div class="info-title">Last Detection</div>
+                    <div class="info-title" data-lang="lastDetection">Last Detection</div>
                     <div class="info-content" id="lastDetection">No threats detected</div>
                 </div>
                 <div class="info-section">
-                    <div class="info-title">Mission Timer</div>
+                    <div class="info-title" data-lang="missionTimer">Mission Timer</div>
                     <div class="info-content" id="missionTimer">00:00:00</div>
                 </div>
             </div>
@@ -780,10 +865,10 @@
     <!-- Threat Alert Modal -->
     <div id="threatAlert" class="threat-alert">
         <div class="alert-icon">⚠️</div>
-        <div class="alert-title">HOSTILE DRONE DETECTED</div>
-        <div class="alert-message" id="alertMessage">Unidentified aerial vehicle detected in restricted airspace</div>
-        <button class="btn btn-danger" onclick="closeAlert()">ACKNOWLEDGE</button>
-        <button class="btn btn-warning" onclick="engageTarget()">ENGAGE TARGET</button>
+        <div class="alert-title" data-lang="hostileDroneDetected">HOSTILE DRONE DETECTED</div>
+        <div class="alert-message" id="alertMessage" data-lang="unidentifiedAerial">Unidentified aerial vehicle detected in restricted airspace</div>
+        <button class="btn btn-danger" onclick="closeAlert()" data-lang="acknowledge">ACKNOWLEDGE</button>
+        <button class="btn btn-warning" onclick="engageTarget()" data-lang="engageTarget">ENGAGE TARGET</button>
     </div>
 
     <script>
@@ -796,6 +881,313 @@
         let missionStartTime = Date.now();
         let threatCount = 0;
         let trackingCount = 0;
+        let currentLanguage = 'en'; // Default to English
+
+        // Language support object
+        const languages = {
+            en: {
+                // Header and Navigation
+                appTitle: "C4ISR v3 - Military Operations",
+                buildInfo: "BUILD: ADVANCED-DRONE-OPS",
+                statusHTTP3: "HTTP/3 ACTIVE",
+                statusSDR: "SDR ONLINE",
+                statusThreats: "THREATS",
+                statusTracking: "TRACKING",
+                
+                // Sidebar Sections
+                targetAcquisition: "🎯 Target Acquisition",
+                frequencyRange: "Frequency Range (MHz)",
+                detectionSensitivity: "Detection Sensitivity",
+                startScan: "START SCAN",
+                stopScan: "STOP SCAN",
+                
+                // Military Operations
+                militaryOps: "⚔️ Military Operations",
+                jamDrone: "JAM DRONE",
+                capture: "CAPTURE",
+                destroy: "DESTROY",
+                spoofData: "SPOOF DATA",
+                targetCoords: "Target Coordinates",
+                operationZone: "Operation Zone",
+                
+                // Operation Zones
+                oceanTerritory: "Ocean Territory",
+                desertRegion: "Desert Region",
+                urbanArea: "Urban Area",
+                borderZone: "Border Zone",
+                
+                // SDR Integration
+                sdrIntegration: "📡 SDR Integration",
+                signalStrength: "Signal Strength",
+                
+                // Stealth Operations
+                stealthOps: "🥷 Stealth Operations",
+                enableStealth: "ENABLE STEALTH",
+                disableStealth: "DISABLE STEALTH",
+                spoofingStatus: "Spoofing Status",
+                gpsJammingRange: "GPS Jamming Range",
+                
+                // System Status
+                systemStatus: "💻 System Status",
+                platform: "Platform",
+                protocol: "Protocol",
+                encryption: "Encryption",
+                location: "Location",
+                
+                // HUD Elements
+                missionControlHUD: "Mission Control HUD",
+                activeTargets: "Active Targets",
+                threatLevel: "Threat Level",
+                signalQuality: "Signal Quality",
+                networkLatency: "Network Latency",
+                stealthStatus: "Stealth Mode",
+                
+                // Info Panel
+                currentOperation: "Current Operation",
+                activeFrequency: "Active Frequency",
+                lastDetection: "Last Detection",
+                missionTimer: "Mission Timer",
+                
+                // Operations
+                surveillanceMode: "Surveillance Mode",
+                activeScanning: "Active Scanning",
+                jammingActive: "JAMMING ACTIVE",
+                captureSequence: "CAPTURE SEQUENCE",
+                destructionSequence: "DESTRUCTION SEQUENCE",
+                stealthActive: "STEALTH ACTIVE",
+                
+                // Threat Levels
+                threatLow: "LOW",
+                threatModerate: "MODERATE", 
+                threatHigh: "HIGH",
+                threatCritical: "CRITICAL",
+                
+                // Aircraft Types
+                drone: "DRONE",
+                commercial: "COMMERCIAL",
+                military: "MILITARY",
+                generalAviation: "GENERAL AVIATION",
+                unknown: "UNKNOWN",
+                
+                // Messages
+                noTargetsDetected: "No targets detected for operation",
+                targetJammed: "Target jammed at",
+                captureInitiated: "Capture initiated at",
+                targetCaptured: "Target captured successfully",
+                targetEliminated: "Target eliminated",
+                threatNeutralized: "Threat neutralized",
+                operationCompleted: "Operation completed successfully",
+                systemInitialized: "System initialized successfully",
+                
+                // Alerts
+                hostileDroneDetected: "HOSTILE DRONE DETECTED",
+                unidentifiedAerial: "Unidentified aerial vehicle detected in restricted airspace",
+                acknowledge: "ACKNOWLEDGE",
+                engageTarget: "ENGAGE TARGET",
+                lethalForceWarning: "⚠️ LETHAL FORCE AUTHORIZED ⚠️",
+                confirmDestruction: "Initiate target destruction sequence?",
+                
+                // Terminal Messages
+                fetchingFlightData: "Fetching real-time flight data from FlightRadar24...",
+                successfullyFetched: "Successfully fetched",
+                realAircraft: "real aircraft",
+                errorFetching: "Error fetching real flight data",
+                highThreat: "HIGH THREAT",
+                detectedAt: "detected at"
+            },
+            fa: {
+                // Header and Navigation
+                appTitle: "سیستم عملیات نظامی C4ISR v3",
+                buildInfo: "ساخت: عملیات پیشرفته پهپاد",
+                statusHTTP3: "HTTP/3 فعال",
+                statusSDR: "SDR آنلاین", 
+                statusThreats: "تهدیدها",
+                statusTracking: "ردیابی",
+                
+                // Sidebar Sections
+                targetAcquisition: "🎯 کسب هدف",
+                frequencyRange: "محدوده فرکانس (مگاهرتز)",
+                detectionSensitivity: "حساسیت تشخیص",
+                startScan: "شروع اسکن",
+                stopScan: "توقف اسکن",
+                
+                // Military Operations
+                militaryOps: "⚔️ عملیات نظامی",
+                jamDrone: "مختل کردن پهپاد",
+                capture: "تسخیر",
+                destroy: "انهدام",
+                spoofData: "جعل داده",
+                targetCoords: "مختصات هدف",
+                operationZone: "منطقه عملیات",
+                
+                // Operation Zones
+                oceanTerritory: "قلمرو اقیانوسی",
+                desertRegion: "منطقه صحرایی",
+                urbanArea: "منطقه شهری",
+                borderZone: "منطقه مرزی",
+                
+                // SDR Integration
+                sdrIntegration: "📡 یکپارچگی SDR",
+                signalStrength: "قدرت سیگنال",
+                
+                // Stealth Operations
+                stealthOps: "🥷 عملیات رازآلود",
+                enableStealth: "فعال کردن حالت رازآلود",
+                disableStealth: "غیرفعال کردن حالت رازآلود",
+                spoofingStatus: "وضعیت جعل",
+                gpsJammingRange: "برد مختل کردن GPS",
+                
+                // System Status
+                systemStatus: "💻 وضعیت سیستم",
+                platform: "پلتفرم",
+                protocol: "پروتکل",
+                encryption: "رمزنگاری",
+                location: "موقعیت",
+                
+                // HUD Elements
+                missionControlHUD: "رابط کنترل ماموریت",
+                activeTargets: "اهداف فعال",
+                threatLevel: "سطح تهدید",
+                signalQuality: "کیفیت سیگنال",
+                networkLatency: "تاخیر شبکه",
+                stealthStatus: "حالت رازآلود",
+                
+                // Info Panel
+                currentOperation: "عملیات جاری",
+                activeFrequency: "فرکانس فعال",
+                lastDetection: "آخرین تشخیص",
+                missionTimer: "زمان‌سنج ماموریت",
+                
+                // Operations
+                surveillanceMode: "حالت نظارت",
+                activeScanning: "اسکن فعال",
+                jammingActive: "مختل کردن فعال",
+                captureSequence: "دنباله تسخیر",
+                destructionSequence: "دنباله انهدام",
+                stealthActive: "حالت رازآلود فعال",
+                
+                // Threat Levels
+                threatLow: "کم",
+                threatModerate: "متوسط",
+                threatHigh: "بالا", 
+                threatCritical: "بحرانی",
+                
+                // Aircraft Types
+                drone: "پهپاد",
+                commercial: "تجاری",
+                military: "نظامی",
+                generalAviation: "هوانوردی عمومی",
+                unknown: "ناشناخته",
+                
+                // Messages
+                noTargetsDetected: "هیچ هدفی برای عملیات تشخیص داده نشد",
+                targetJammed: "هدف مختل شد در",
+                captureInitiated: "تسخیر آغاز شد در",
+                targetCaptured: "هدف با موفقیت تسخیر شد",
+                targetEliminated: "هدف حذف شد",
+                threatNeutralized: "تهدید خنثی شد",
+                operationCompleted: "عملیات با موفقیت تکمیل شد",
+                systemInitialized: "سیستم با موفقیت راه‌اندازی شد",
+                
+                // Alerts
+                hostileDroneDetected: "پهپاد خصمانه تشخیص داده شد",
+                unidentifiedAerial: "وسیله پرنده ناشناخته در حریم هوایی محدود تشخیص داده شد",
+                acknowledge: "تایید",
+                engageTarget: "درگیری با هدف",
+                lethalForceWarning: "⚠️ استفاده از نیروی کشنده مجاز است ⚠️",
+                confirmDestruction: "آغاز دنباله انهدام هدف؟",
+                
+                // Terminal Messages
+                fetchingFlightData: "دریافت داده‌های پروازی بلادرنگ از FlightRadar24...",
+                successfullyFetched: "با موفقیت دریافت شد",
+                realAircraft: "هواپیمای واقعی",
+                errorFetching: "خطا در دریافت داده‌های پروازی واقعی",
+                highThreat: "تهدید بالا",
+                detectedAt: "تشخیص داده شد در"
+            }
+        };
+
+        // Language utility functions
+        function getText(key) {
+            return languages[currentLanguage][key] || languages['en'][key] || key;
+        }
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            updateUILanguage();
+            localStorage.setItem('c4isr_language', lang);
+        }
+
+                 function updateUILanguage() {
+             // Update all elements with data-lang attributes
+             document.querySelectorAll('[data-lang]').forEach(element => {
+                 const key = element.getAttribute('data-lang');
+                 const text = getText(key);
+                 
+                 // Handle different element types
+                 if (element.tagName === 'INPUT' && element.type === 'text') {
+                     element.placeholder = text;
+                 } else if (element.tagName === 'OPTION') {
+                     element.textContent = text;
+                 } else {
+                     element.textContent = text;
+                 }
+             });
+
+             // Update language button states
+             document.querySelectorAll('.lang-btn').forEach(btn => {
+                 btn.classList.remove('active');
+             });
+             document.getElementById(`lang${currentLanguage.toUpperCase()}Btn`).classList.add('active');
+
+             // Update dynamic content
+             updateDynamicLanguageContent();
+
+             // Update direction for RTL languages
+             if (currentLanguage === 'fa') {
+                 document.documentElement.dir = 'rtl';
+                 document.documentElement.lang = 'fa';
+                 document.body.style.fontFamily = "'Vazir', 'Tahoma', 'Arial', sans-serif";
+                 
+                 // Add Persian font support
+                 if (!document.getElementById('persian-font')) {
+                     const link = document.createElement('link');
+                     link.id = 'persian-font';
+                     link.href = 'https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css';
+                     link.rel = 'stylesheet';
+                     document.head.appendChild(link);
+                 }
+             } else {
+                 document.documentElement.dir = 'ltr';
+                 document.documentElement.lang = 'en';
+                 document.body.style.fontFamily = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+             }
+         }
+
+         function updateDynamicLanguageContent() {
+             // Update scan button text based on state
+             const scanBtn = document.querySelector('#startScanBtn span');
+             if (scanBtn) {
+                 scanBtn.textContent = getText(scanningActive ? 'stopScan' : 'startScan');
+             }
+
+             // Update stealth button text based on state
+             const stealthBtn = document.querySelector('#stealthBtn span');
+             if (stealthBtn) {
+                 stealthBtn.textContent = getText(stealthMode ? 'disableStealth' : 'enableStealth');
+             }
+
+             // Update threat level display
+             const threatLevel = document.getElementById('threatLevel');
+             if (threatLevel) {
+                 const currentThreatText = threatLevel.textContent.trim();
+                 let threatKey = 'threatLow';
+                 if (currentThreatText.includes('HIGH') || currentThreatText.includes('بالا')) threatKey = 'threatHigh';
+                 else if (currentThreatText.includes('CRITICAL') || currentThreatText.includes('بحرانی')) threatKey = 'threatCritical';
+                 else if (currentThreatText.includes('MODERATE') || currentThreatText.includes('متوسط')) threatKey = 'threatModerate';
+                 threatLevel.textContent = getText(threatKey);
+             }
+         }
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
@@ -806,6 +1198,15 @@
             try {
                 // Show loading screen
                 showLoading();
+                
+                // Load saved language preference
+                const savedLang = localStorage.getItem('c4isr_language');
+                if (savedLang && (savedLang === 'en' || savedLang === 'fa')) {
+                    currentLanguage = savedLang;
+                }
+                
+                // Initialize language system
+                updateUILanguage();
                 
                 // Initialize HTTP/3 connection
                 await initializeHTTP3();
@@ -825,7 +1226,8 @@
                 // Hide loading screen
                 hideLoading();
                 
-                console.log('C4ISR v3 System initialized successfully');
+                console.log(getText('systemInitialized'));
+                addTerminalOutput(getText('systemInitialized'), 'success');
             } catch (error) {
                 console.error('System initialization failed:', error);
                 alert('System initialization failed. Please check your connection and try again.');
@@ -885,7 +1287,7 @@
 
         async function fetchRealFlightData() {
             try {
-                addTerminalOutput('Fetching real-time flight data from FlightRadar24...', 'info');
+                addTerminalOutput(getText('fetchingFlightData'), 'info');
                 
                 // Get current map bounds for targeted data fetching
                 const bounds = map.getBounds();
@@ -918,11 +1320,12 @@
                 // Process real flight data
                 processRealFlightData(data);
                 
-                addTerminalOutput(`Successfully fetched ${Object.keys(data).length - 4} real aircraft`, 'success');
+                const aircraftCount = Object.keys(data).length - 4;
+                addTerminalOutput(`${getText('successfullyFetched')} ${aircraftCount} ${getText('realAircraft')}`, 'success');
                 
             } catch (error) {
                 console.error('Error fetching flight data:', error);
-                addTerminalOutput(`Error fetching real flight data: ${error.message}`, 'error');
+                addTerminalOutput(`${getText('errorFetching')}: ${error.message}`, 'error');
                 
                 // Fallback to alternative data source
                 await fetchAlternativeFlightData();
@@ -1169,7 +1572,7 @@
             // Auto-alert for high-threat targets
             if (flight.threat) {
                 showThreatAlert(flight);
-                addTerminalOutput(`HIGH THREAT: ${flight.callsign || flight.id} detected at ${flight.lat.toFixed(4)}, ${flight.lng.toFixed(4)}`, 'error');
+                addTerminalOutput(`${getText('highThreat')}: ${flight.callsign || flight.id} ${getText('detectedAt')} ${flight.lat.toFixed(4)}, ${flight.lng.toFixed(4)}`, 'error');
             }
 
             return marker;
@@ -1319,33 +1722,34 @@
             const btn = event.target;
             
             if (scanningActive) {
-                btn.innerHTML = '<i class="fas fa-stop"></i> STOP SCAN';
+                btn.innerHTML = `<i class="fas fa-stop"></i> <span data-lang="stopScan">${getText('stopScan')}</span>`;
                 btn.classList.add('btn-danger');
                 btn.classList.remove('btn-success');
-                document.getElementById('currentOperation').textContent = 'Active Scanning';
+                document.getElementById('currentOperation').textContent = getText('activeScanning');
             } else {
-                btn.innerHTML = '<i class="fas fa-radar"></i> START SCAN';
+                btn.innerHTML = `<i class="fas fa-radar"></i> <span data-lang="startScan">${getText('startScan')}</span>`;
                 btn.classList.add('btn-success');
                 btn.classList.remove('btn-danger');
-                document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                document.getElementById('currentOperation').textContent = getText('surveillanceMode');
             }
         }
 
         function jamTarget() {
             if (detectedTargets.length === 0) {
-                alert('No targets detected for jamming operation');
+                alert(getText('noTargetsDetected'));
                 return;
             }
             
-            const confirmation = confirm('Initiate jamming operation on detected targets?');
+            const confirmation = confirm(getText('confirmJamming') || 'Initiate jamming operation on detected targets?');
             if (confirmation) {
-                document.getElementById('currentOperation').textContent = 'JAMMING ACTIVE';
-                document.getElementById('lastDetection').textContent = 'Target jammed at ' + new Date().toLocaleTimeString();
+                document.getElementById('currentOperation').textContent = getText('jammingActive');
+                document.getElementById('lastDetection').textContent = getText('targetJammed') + ' ' + new Date().toLocaleTimeString();
                 
                 // Simulate jamming effect
                 setTimeout(() => {
-                    alert('Jamming operation completed. Target communications disrupted.');
-                    document.getElementById('currentOperation').textContent = 'Surveillance Mode';
+                    alert(getText('operationCompleted'));
+                    document.getElementById('currentOperation').textContent = getText('surveillanceMode');
+                    updateDynamicLanguageContent();
                 }, 3000);
             }
         }
@@ -1539,9 +1943,37 @@
             alert('Network connection lost. Switching to offline mode.');
         });
 
+        // Simple terminal output function for systems without terminal
+        function addTerminalOutput(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            // Try to add to terminal if it exists
+            const terminalOutput = document.getElementById('terminalOutput');
+            if (terminalOutput) {
+                const line = document.createElement('div');
+                line.className = `output-line output-${type}`;
+                line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                terminalOutput.appendChild(line);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                
+                // Keep only last 50 lines
+                while (terminalOutput.children.length > 50) {
+                    terminalOutput.removeChild(terminalOutput.firstChild);
+                }
+            }
+        }
+
         // Error handling
         window.addEventListener('error', function(e) {
             console.error('System error:', e.error);
+        });
+
+        // Initialize language switcher on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial language button state
+            const savedLang = localStorage.getItem('c4isr_language') || 'en';
+            setLanguage(savedLang);
         });
     </script>
 </body>
