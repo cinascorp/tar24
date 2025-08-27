@@ -1,0 +1,1445 @@
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>C4ISR v3 Mobile - Android Military Operations</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQzRJU1IgdjMgTW9iaWxlIiwic2hvcnRfbmFtZSI6IkM0SVNSIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJmdWxsc2NyZWVuIiwidGhlbWVfY29sb3IiOiIjMDAwMDAwIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwMDAwMDAifQ==">
+    
+    <!-- External Libraries -->
+   <!--<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /> --> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<!--    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> --> 
+    
+    <style>
+        :root {
+            --android-primary: #121212;
+            --android-secondary: #1f1f1f;
+            --android-accent: #03dac6;
+            --android-accent-variant: #018786;
+            --android-error: #cf6679;
+            --android-warning: #ff9800;
+            --android-success: #4caf50;
+            --android-surface: #212121;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --text-hint: #666666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+            background: linear-gradient(180deg, var(--android-primary), #000000);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            height: 100vh;
+            position: relative;
+            user-select: none;
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--android-surface);
+            border-bottom: 1px solid var(--android-accent);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--android-accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--android-primary);
+            font-weight: bold;
+        }
+
+        .app-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--android-accent);
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .status-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--android-success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-icon.warning { background: var(--android-warning); }
+        .status-icon.error { background: var(--android-error); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.3); }
+        }
+
+        /* Main Container */
+        .main-container {
+            margin-top: 60px;
+            height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            background: var(--android-secondary);
+            border-bottom: 1px solid rgba(3, 218, 198, 0.3);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px 8px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-button.active {
+            color: var(--android-accent);
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--android-accent);
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tab-pane {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Map Tab */
+        #map {
+            width: 100%;
+            height: 100%;
+          /*  background: var(--android-primary); */
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(18, 18, 18, 0.9);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 150px;
+            border: 1px solid var(--android-accent);
+        }
+
+        .overlay-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .overlay-label {
+            color: var(--text-secondary);
+        }
+
+        .overlay-value {
+            color: var(--android-accent);
+            font-weight: 500;
+        }
+
+        /* Operations Tab */
+        .operations-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .operation-card {
+            background: var(--android-surface);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(3, 218, 198, 0.2);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .operation-card:active {
+            transform: scale(0.95);
+            background: rgba(3, 218, 198, 0.1);
+        }
+
+        .operation-card.danger {
+            border-color: rgba(207, 102, 121, 0.3);
+        }
+
+        .operation-card.danger:active {
+            background: rgba(207, 102, 121, 0.1);
+        }
+
+        .operation-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: var(--android-accent);
+        }
+
+        .operation-card.danger .operation-icon {
+            color: var(--android-error);
+        }
+
+        .operation-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .operation-subtitle {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Controls Tab */
+        .controls-section {
+            padding: 16px;
+        }
+
+        .section-header {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--android-accent);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group {
+            background: var(--android-surface);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--android-primary);
+            border: 1px solid rgba(3, 218, 198, 0.3);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: var(--android-accent);
+            box-shadow: 0 0 0 2px rgba(3, 218, 198, 0.2);
+        }
+
+        .range-container {
+            position: relative;
+            margin: 12px 0;
+        }
+
+        .range-input {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--android-primary);
+            outline: none;
+            ;
+        }
+
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--android-accent);
+            cursor: pointer;
+        }
+
+        .range-value {
+            position: absolute;
+            right: 0;
+            top: -25px;
+            font-size: 12px;
+            color: var(--android-accent);
+            font-weight: 500;
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 16px 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: var(--android-primary);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--android-accent);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(22px);
+        }
+
+        /* Terminal Tab */
+        .terminal-container {
+            background: #000000;
+            height: 100%;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-y: auto;
+        }
+
+        .terminal-header {
+            color: var(--android-accent);
+            margin-bottom: 16px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .terminal-output {
+            margin-bottom: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--android-accent);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .terminal-line {
+            margin: 4px 0;
+            word-wrap: break-word;
+        }
+
+        .terminal-success { color: var(--android-success); }
+        .terminal-error { color: var(--android-error); }
+        .terminal-warning { color: var(--android-warning); }
+        .terminal-info { color: var(--android-accent); }
+
+        .terminal-commands {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .terminal-cmd {
+            padding: 8px;
+            background: var(--android-surface);
+            border: 1px solid var(--android-accent);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 10px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .terminal-cmd:active {
+            background: var(--android-accent);
+            color: var(--android-primary);
+        }
+
+        /* Bottom Action Bar */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--android-surface);
+            border-top: 1px solid var(--android-accent);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 16px;
+            z-index: 1000;
+        }
+
+        .action-button {
+            background: var(--android-accent);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: var(--android-primary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-button:active {
+            transform: scale(0.95);
+            background: var(--android-accent-variant);
+        }
+
+        .action-button.danger {
+            background: var(--android-error);
+        }
+
+        .emergency-button {
+            background: var(--android-error);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            position: relative;
+        }
+
+        /* Status Panel */
+        .status-panel {
+            background: var(--android-surface);
+            margin: 16px;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(3, 218, 198, 0.2);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--android-accent);
+            margin-bottom: 4px;
+        }
+
+        .status-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Alerts */
+        .alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--android-error);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 2000;
+            min-width: 280px;
+            display: none;
+        }
+
+        .alert-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            animation: pulse 1s infinite;
+        }
+
+        .alert-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .alert-message {
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .alert-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .alert-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(3, 218, 198, 0.3);
+            border-top: 3px solid var(--android-accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 360px) {
+            .operations-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .terminal-commands {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Landscape mode adjustments */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .mobile-header {
+                height: 48px;
+            }
+            
+            .main-container {
+                margin-top: 48px;
+                height: calc(100vh - 48px);
+            }
+            
+            .action-bar {
+                height: 48px;
+            }
+            
+            .tab-button {
+                padding: 8px 4px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div>
+    <div id="map">
+    </div>
+
+
+     <!-- Mobile Header -->
+    <div class="mobile-header" >
+        <div class="app-logo">
+            <div class="logo-icon">C4</div>
+            <div class="app-title">Military Ops</div>
+        </div>
+        <div class="status-icons">
+            <div class="status-icon" id="rootStatus"></div>
+            <div class="status-icon warning" id="gpsStatus"></div>
+            <div class="status-icon" id="networkStatus"></div>
+            <span style="font-size: 12px; color: var(--text-secondary);" id="threatCounter">0</span>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active" onclick="switchTab('map')">
+                <i class="fas fa-map"></i><br>Map
+            </button>
+            <button class="tab-button" onclick="switchTab('ops')">
+                <i class="fas fa-rocket"></i><br>Operations
+            </button>
+            <button class="tab-button" onclick="switchTab('controls')">
+                <i class="fas fa-sliders-h"></i><br>Controls
+            </button>
+            <button class="tab-button" onclick="switchTab('terminal')">
+                <i class="fas fa-terminal"></i><br>Terminal
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Map Tab -->
+            <div id="map-tab" class="tab-pane active">
+                <div id="map"></div>
+                <div class="map-overlay">
+                    <div class="overlay-item">
+                        <span class="overlay-label">Targets:</span>
+                        <span class="overlay-value" id="targetCount">0</span>
+                    </div>
+                    <div class="overlay-item">
+                        <span class="overlay-label">Signal:</span>
+                        <span class="overlay-value" id="signalStrength">Strong</span>
+                    </div>
+                    <div class="overlay-item">
+                        <span class="overlay-label">Mode:</span>
+                        <span class="overlay-value" id="operationMode">Surveillance</span>
+                    </div>
+                    <div class="overlay-item">
+                        <span class="overlay-label">Battery:</span>
+                        <span class="overlay-value" id="batteryLevel">85%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operations Tab -->
+            <div id="ops-tab" class="tab-pane">
+                <div class="status-panel">
+                    <div class="section-header">
+                        <i class="fas fa-shield-alt"></i>
+                        Mission Status
+                    </div>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <div class="status-value" id="activeThreats">0</div>
+                            <div class="status-label">Active Threats</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-value" id="missionTime">00:00</div>
+                            <div class="status-label">Mission Time</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-value" id="dataTransfer">2.4M</div>
+                            <div class="status-label">Data Transfer</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-value" id="frequency">433.92</div>
+                            <div class="status-label">Frequency (MHz)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="operations-grid">
+                    <div class="operation-card" onclick="executeOperation('scan')">
+                        <div class="operation-icon">📡</div>
+                        <div class="operation-title">Scan Area</div>
+                        <div class="operation-subtitle">RF Frequency Scan</div>
+                    </div>
+                    
+                    <div class="operation-card" onclick="executeOperation('track')">
+                        <div class="operation-icon">🎯</div>
+                        <div class="operation-title">Track Target</div>
+                        <div class="operation-subtitle">Auto Tracking</div>
+                    </div>
+                    
+                    <div class="operation-card danger" onclick="executeOperation('jam')">
+                        <div class="operation-icon">🚫</div>
+                        <div class="operation-title">Jam Signal</div>
+                        <div class="operation-subtitle">Disrupt Comms</div>
+                    </div>
+                    
+                    <div class="operation-card danger" onclick="executeOperation('capture')">
+                        <div class="operation-icon">🤖</div>
+                        <div class="operation-title">Capture Drone</div>
+                        <div class="operation-subtitle">Take Control</div>
+                    </div>
+                    
+                    <div class="operation-card" onclick="executeOperation('stealth')">
+                        <div class="operation-icon">🥷</div>
+                        <div class="operation-title">Stealth Mode</div>
+                        <div class="operation-subtitle">Hide Presence</div>
+                    </div>
+                    
+                    <div class="operation-card danger" onclick="executeOperation('destroy')">
+                        <div class="operation-icon">💥</div>
+                        <div class="operation-title">Destroy Target</div>
+                        <div class="operation-subtitle">Lethal Force</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Tab -->
+            <div id="controls-tab" class="tab-pane">
+                <div class="controls-section">
+                    <div class="section-header">
+                        <i class="fas fa-cog"></i>
+                        System Configuration
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Frequency Range (MHz)</label>
+                        <input type="text" class="control-input" value="400-6000" id="freqRange">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Detection Sensitivity</label>
+                        <div class="range-container">
+                            <input type="range" class="range-input" min="1" max="10" value="7" id="sensitivity">
+                            <span class="range-value" id="sensitivityValue">7</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">GPS Jamming Range (km)</label>
+                        <div class="range-container">
+                            <input type="range" class="range-input" min="1" max="50" value="10" id="jammingRange">
+                            <span class="range-value" id="jammingValue">10</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="toggle-container">
+                            <span class="control-label">Root Access</span>
+                            <div class="toggle-switch active" onclick="toggleSwitch(this)" id="rootToggle">
+                                <div class="toggle-slider"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="toggle-container">
+                            <span class="control-label">Stealth Mode</span>
+                            <div class="toggle-switch" onclick="toggleSwitch(this)" id="stealthToggle">
+                                <div class="toggle-slider"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="toggle-container">
+                            <span class="control-label">Auto Response</span>
+                            <div class="toggle-switch" onclick="toggleSwitch(this)" id="autoToggle">
+                                <div class="toggle-slider"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-header">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Location & Coordinates
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Target Coordinates</label>
+                        <input type="text" class="control-input" placeholder="35.6892, 51.3890" id="targetCoords">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Operation Zone</label>
+                        <select class="control-input" id="operationZone">
+                            <option value="urban">Urban Area</option>
+                            <option value="ocean">Ocean Territory</option>
+                            <option value="desert">Desert Region</option>
+                            <option value="border">Border Zone</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Tab -->
+            <div id="terminal-tab" class="tab-pane">
+                <div class="terminal-container">
+                    <div class="terminal-header">
+                        ANDROID C4ISR TERMINAL v3.0
+                    </div>
+                    
+                    <div class="terminal-output" id="terminalOutput">
+                        <div class="terminal-line terminal-success">[SYSTEM] Android C4ISR v3 initialized</div>
+                        <div class="terminal-line terminal-info">[ROOT] Superuser privileges active</div>
+                        <div class="terminal-line terminal-warning">[SDR] RTL-SDR device detected</div>
+                        <div class="terminal-line terminal-success">[NETWORK] Mobile data connection established</div>
+                        <div class="terminal-line terminal-info">[GPS] Location services active</div>
+                        <div class="terminal-line terminal-success">[READY] System ready for operations</div>
+                    </div>
+                    
+                    <div class="terminal-commands">
+                        <button class="terminal-cmd" onclick="runCommand('status')">System Status</button>
+                        <button class="terminal-cmd" onclick="runCommand('scan')">RF Scan</button>
+                        <button class="terminal-cmd" onclick="runCommand('gps')">GPS Info</button>
+                        <button class="terminal-cmd" onclick="runCommand('network')">Network Test</button>
+                        <button class="terminal-cmd" onclick="runCommand('battery')">Battery Info</button>
+                        <button class="terminal-cmd" onclick="runCommand('root')">Root Check</button>
+                        <button class="terminal-cmd" onclick="runCommand('clear')">Clear Log</button>
+                        <button class="terminal-cmd" onclick="runCommand('help')">Help</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button class="action-button" onclick="quickScan()">
+            <i class="fas fa-search"></i> Quick Scan
+        </button>
+        <button class="action-button" onclick="shareLocation()">
+            <i class="fas fa-share"></i> Share
+        </button>
+        <button class="emergency-button" onclick="emergencyProtocol()">
+            <i class="fas fa-exclamation"></i>
+        </button>
+        <button class="action-button danger" onclick="alertMode()">
+            <i class="fas fa-bell"></i> Alert
+        </button>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alertModal" class="alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-title" id="alertTitle">Threat Detected</div>
+        <div class="alert-message" id="alertMessage">Hostile drone detected in your vicinity</div>
+        <div class="alert-buttons">
+            <button class="alert-btn" onclick="acknowledgeAlert()">Acknowledge</button>
+            <button class="alert-btn" onclick="engageTarget()">Engage</button>
+        </div>
+    </div>
+</div>
+
+
+
+    
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&callback=initMap"></script>
+    <script>
+        async function getRotatedIcon(url, rotation, size = 32) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous'; // To avoid CORS issues
+                img.src = url + '?color=000000'; // Add param if needed for icons8
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const canvasSize = size * Math.sqrt(2); // To fit rotated image
+                    canvas.width = canvasSize;
+                    canvas.height = canvasSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.translate(canvasSize / 2, canvasSize / 2);
+                    ctx.rotate(rotation * Math.PI / 180);
+                    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+                    resolve(canvas.toDataURL());
+                };
+                img.onerror = () => {
+                    console.error('Error loading image:', url);
+                    resolve(url); // Fallback to original
+                };
+            });
+        }
+
+        function initMap() {
+            // Initialize standard Google Map
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 35.693, lng: 51.330 },
+                zoom: 6
+            });
+
+            const airplaneUrl = 'https://img.icons8.com/3d-fluency/94/airplane-1.png';
+            const droneUrl = 'https://img.icons8.com/wired/64/drone-bottom-view.png';
+
+            // Fetch live flight data from FlightRadar24
+            async function fetchFlightData() {
+                try {
+                    const response = await fetch('https://data-cloud.flightradar24.com/zones/fcgi/zone.js?adsb=1&mlat=1&flarm=1&estimated=1&air=1&gnd=1&vehicles=1&gliders=1');
+                    const text = await response.text();
+                    // Parse JSON manually (removing any non-JSON prefix if needed)
+                    const jsonStart = text.indexOf('{');
+                    const jsonData = JSON.parse(text.substring(jsonStart));
+                    return jsonData;
+                } catch (error) {
+                    console.error('Error fetching flight data:', error);
+                    return {};
+                }
+            }
+
+            let markers = [];
+
+            // Process and display flights
+            async function updateFlights() {
+                const flightData = await fetchFlightData();
+
+                // Clear existing markers
+                markers.forEach(marker => marker.setMap(null));
+                markers = [];
+
+                // Iterate through flight data
+                for (const flightId in flightData) {
+                    if (flightId === 'full_count' || flightId === 'version') continue;
+
+                    const flight = flightData[flightId];
+                    if (flight.length < 19) continue;
+
+                    const [
+                        icao, lat, lng, heading, altitude, speed, squawk, radar,
+                        aircraftType, registration, timestamp, origin, destination,
+                        flightNumber, isGround, verticalSpeed, callsign, unknown, airline
+                    ] = flight;
+
+                    // Skip if latitude, longitude, or invalid data
+                    if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
+
+                    const isDrone = aircraftType.toUpperCase().includes('DRON') || aircraftType.toUpperCase().includes('UAV') || aircraftType === 'QUAD';
+
+                    const iconUrl = isDrone ? droneUrl : airplaneUrl;
+                    const rotation = parseInt(heading) || 0;
+                    const rotatedUrl = await getRotatedIcon(iconUrl, rotation);
+
+                    // Create marker for each flight
+                    const marker = new google.maps.Marker({
+                        position: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        map: map,
+                        icon: {
+                            url: rotatedUrl,
+                            scaledSize: new google.maps.Size(32, 32),
+                            anchor: new google.maps.Point(16, 16)
+                        },
+                        title: callsign || flightNumber || registration || 'Unknown'
+                    });
+
+                    // Convert timestamp to readable date
+                    const flightTime = new Date(timestamp * 1000).toUTCString();
+
+                    // Create info window with all 19 parameters
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="info-window">
+                                <h3>${callsign || flightNumber || 'Unknown Flight'}</h3>
+                                <p>ICAO: ${icao || 'N/A'}</p>
+                                <p>Latitude: ${lat || 'N/A'}</p>
+                                <p>Longitude: ${lng || 'N/A'}</p>
+                                <p>Heading: ${heading || 'N/A'}°</p>
+                                <p>Altitude: ${altitude ? altitude + ' ft' : 'N/A'}</p>
+                                <p>Speed: ${speed ? speed + ' knots' : 'N/A'}</p>
+                                <p>Squawk: ${squawk || 'N/A'}</p>
+                                <p>Radar: ${radar || 'N/A'}</p>
+                                <p>Aircraft Type: ${aircraftType || 'N/A'}</p>
+                                <p>Registration: ${registration || 'N/A'}</p>
+                                <p>Timestamp: ${flightTime || 'N/A'}</p>
+                                <p>Origin: ${origin || 'N/A'}</p>
+                                <p>Destination: ${destination || 'N/A'}</p>
+                                <p>Flight Number: ${flightNumber || 'N/A'}</p>
+                                <p>On Ground: ${isGround ? 'Yes' : 'No'}</p>
+                                <p>Vertical Speed: ${verticalSpeed ? verticalSpeed + ' ft/min' : 'N/A'}</p>
+                                <p>Callsign: ${callsign || 'N/A'}</p>
+                                <p>Unknown: ${unknown || 'N/A'}</p>
+                                <p>Airline: ${airline || 'N/A'}</p>
+                            </div>
+                        `
+                    });
+
+                    // Add click listener for popup
+                    marker.addListener('click', () => {
+                        infoWindow.open(map, marker);
+                    });
+
+                    markers.push(marker);
+                }
+
+                // Refresh flight data every 10 seconds
+                setTimeout(updateFlights, 10000);
+            }
+
+            // Initial call to load flights
+            updateFlights();
+        }
+    </script>
+
+
+
+
+
+    <script>
+        let map;
+        let currentTab = 'map';
+        let missionStartTime = Date.now();
+        let threatCount = 0;
+        let batteryLevel = 85;
+        let isRootEnabled = true;
+        let stealthMode = false;
+        let autoResponse = false;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            showLoading();
+            
+            // Initialize map
+            initializeMap();
+            
+            // Start monitoring
+            startSystemMonitoring();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Request permissions
+            requestPermissions();
+            
+            hideLoading();
+            
+            addTerminalLine('System fully initialized', 'success');
+        }
+
+        function initializeMap() {
+            map = L.map('map', {
+                center: [35.6892, 51.3890],
+                zoom: 10,
+                zoomControl: false,
+                attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: 'C4ISR Mobile v3.0',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add user location if available
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const userLocation = [position.coords.latitude, position.coords.longitude];
+                    map.setView(userLocation, 12);
+                    
+                    L.marker(userLocation, {
+                        icon: L.divIcon({
+                            html: '<div style="color: #03dac6; font-size: 20px;">📍</div>',
+                            className: 'user-marker',
+                            iconSize: [30, 30]
+                        })
+                    }).addTo(map).bindPopup('Your Location');
+                });
+            }
+
+            // Add sample targets
+            addSampleTargets();
+        }
+
+        function addSampleTargets() {
+            const targets = [
+                { lat: 35.7, lng: 51.4, type: 'drone', threat: true, id: 'HOSTILE-001' },
+                { lat: 35.65, lng: 51.35, type: 'aircraft', threat: false, id: 'CIVIL-001' }
+            ];
+
+            targets.forEach(target => {
+                const color = target.threat ? '#cf6679' : '#03dac6';
+                const icon = target.type === 'drone' ? '🚁' : '✈️';
+
+                const marker = L.marker([target.lat, target.lng], {
+                    icon: L.divIcon({
+                        html: `<div style="color: ${color}; font-size: 18px;">${icon}</div>`,
+                        className: 'target-marker',
+                        iconSize: [25, 25]
+                    })
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div style="background: #121212; color: #03dac6; padding: 8px; border-radius: 4px; font-size: 12px;">
+                        <b>ID:</b> ${target.id}<br>
+                        <b>Type:</b> ${target.type}<br>
+                        <b>Threat:</b> ${target.threat ? 'HIGH' : 'LOW'}
+                    </div>
+                `);
+
+                if (target.threat) {
+                    threatCount++;
+                }
+            });
+
+            updateCounters();
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            
+            // Remove active class from buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+            
+            // Resize map if map tab is selected
+            if (tabName === 'map') {
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 100);
+            }
+        }
+
+        function executeOperation(operation) {
+            showLoading();
+            
+            addTerminalLine(`Executing operation: ${operation}`, 'info');
+            
+            setTimeout(() => {
+                switch(operation) {
+                    case 'scan':
+                        addTerminalLine('RF scan completed - 3 signals detected', 'success');
+                        break;
+                    case 'track':
+                        addTerminalLine('Target tracking activated', 'success');
+                        document.getElementById('operationMode').textContent = 'Tracking';
+                        break;
+                    case 'jam':
+                        if (confirm('Initiate jamming operation?')) {
+                            addTerminalLine('Jamming signals transmitted', 'warning');
+                            document.getElementById('operationMode').textContent = 'Jamming';
+                        }
+                        break;
+                    case 'capture':
+                        if (confirm('Attempt drone capture?')) {
+                            addTerminalLine('Drone capture sequence initiated', 'warning');
+                            setTimeout(() => {
+                                addTerminalLine('Target captured successfully', 'success');
+                            }, 2000);
+                        }
+                        break;
+                    case 'stealth':
+                        stealthMode = !stealthMode;
+                        document.getElementById('stealthToggle').classList.toggle('active');
+                        addTerminalLine(`Stealth mode ${stealthMode ? 'enabled' : 'disabled'}`, 'info');
+                        break;
+                    case 'destroy':
+                        if (confirm('⚠️ LETHAL FORCE AUTHORIZED ⚠️\nConfirm target destruction?')) {
+                            addTerminalLine('LETHAL FORCE AUTHORIZED', 'error');
+                            setTimeout(() => {
+                                addTerminalLine('Target eliminated', 'success');
+                                threatCount = Math.max(0, threatCount - 1);
+                                updateCounters();
+                            }, 3000);
+                        }
+                        break;
+                }
+                hideLoading();
+            }, 1000);
+        }
+
+        function runCommand(command) {
+            switch(command) {
+                case 'status':
+                    addTerminalLine('System Status: OPERATIONAL', 'success');
+                    addTerminalLine(`Battery: ${batteryLevel}%`, 'info');
+                    addTerminalLine(`Root: ${isRootEnabled ? 'ACTIVE' : 'INACTIVE'}`, isRootEnabled ? 'success' : 'error');
+                    break;
+                case 'scan':
+                    addTerminalLine('Starting RF frequency scan...', 'info');
+                    setTimeout(() => {
+                        addTerminalLine('Detected signals on 433.92MHz, 868MHz, 2.4GHz', 'success');
+                    }, 1000);
+                    break;
+                case 'gps':
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            addTerminalLine(`GPS: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`, 'success');
+                            addTerminalLine(`Accuracy: ${position.coords.accuracy}m`, 'info');
+                        },
+                        error => {
+                            addTerminalLine('GPS access denied or unavailable', 'error');
+                        }
+                    );
+                    break;
+                case 'network':
+                    addTerminalLine('Testing network connectivity...', 'info');
+                    setTimeout(() => {
+                        addTerminalLine('Network: CONNECTED (4G)', 'success');
+                        addTerminalLine('Latency: 45ms', 'info');
+                    }, 500);
+                    break;
+                case 'battery':
+                    addTerminalLine(`Battery Level: ${batteryLevel}%`, 'success');
+                    addTerminalLine('Charging: No', 'info');
+                    addTerminalLine('Temperature: 32°C', 'warning');
+                    break;
+                case 'root':
+                    addTerminalLine('Checking root access...', 'info');
+                    setTimeout(() => {
+                        addTerminalLine(isRootEnabled ? 'Root access: GRANTED' : 'Root access: DENIED', isRootEnabled ? 'success' : 'error');
+                    }, 500);
+                    break;
+                case 'clear':
+                    document.getElementById('terminalOutput').innerHTML = '';
+                    break;
+                case 'help':
+                    addTerminalLine('Available commands:', 'info');
+                    addTerminalLine('status, scan, gps, network, battery, root, clear, help', 'info');
+                    break;
+            }
+        }
+
+        function toggleSwitch(element) {
+            element.classList.toggle('active');
+            
+            const id = element.id;
+            if (id === 'rootToggle') {
+                isRootEnabled = element.classList.contains('active');
+                addTerminalLine(`Root access ${isRootEnabled ? 'enabled' : 'disabled'}`, 'info');
+            } else if (id === 'stealthToggle') {
+                stealthMode = element.classList.contains('active');
+                addTerminalLine(`Stealth mode ${stealthMode ? 'enabled' : 'disabled'}`, 'info');
+            } else if (id === 'autoToggle') {
+                autoResponse = element.classList.contains('active');
+                addTerminalLine(`Auto response ${autoResponse ? 'enabled' : 'disabled'}`, 'info');
+            }
+        }
+
+        function quickScan() {
+            showLoading();
+            addTerminalLine('Quick scan initiated...', 'info');
+            
+            setTimeout(() => {
+                addTerminalLine('Scan complete - No immediate threats', 'success');
+                hideLoading();
+            }, 2000);
+        }
+
+        function shareLocation() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'C4ISR Position',
+                    text: 'Current military operation coordinates',
+                    url: window.location.href
+                });
+            } else {
+                addTerminalLine('Location sharing not supported', 'error');
+            }
+        }
+
+        function emergencyProtocol() {
+            showAlert('Emergency Protocol', 'Emergency mode activated. All systems on high alert.');
+            addTerminalLine('EMERGENCY PROTOCOL ACTIVATED', 'error');
+            document.getElementById('operationMode').textContent = 'EMERGENCY';
+        }
+
+        function alertMode() {
+            showAlert('Threat Alert', 'Multiple hostile signatures detected in operational area');
+            threatCount += 1;
+            updateCounters();
+        }
+
+        function showAlert(title, message) {
+            document.getElementById('alertTitle').textContent = title;
+            document.getElementById('alertMessage').textContent = message;
+            document.getElementById('alertModal').style.display = 'block';
+        }
+
+        function acknowledgeAlert() {
+            document.getElementById('alertModal').style.display = 'none';
+            addTerminalLine('Alert acknowledged by operator', 'info');
+        }
+
+        function engageTarget() {
+            document.getElementById('alertModal').style.display = 'none';
+            addTerminalLine('Target engagement protocols activated', 'warning');
+            document.getElementById('operationMode').textContent = 'ENGAGED';
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function addTerminalLine(message, type = 'info') {
+            const output = document.getElementById('terminalOutput');
+            const line = document.createElement('div');
+            line.className = `terminal-line terminal-${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+            
+            // Keep only last 20 lines for mobile performance
+            while (output.children.length > 20) {
+                output.removeChild(output.firstChild);
+            }
+        }
+
+        function setupEventListeners() {
+            // Range inputs
+            document.getElementById('sensitivity').addEventListener('input', function() {
+                document.getElementById('sensitivityValue').textContent = this.value;
+            });
+            
+            document.getElementById('jammingRange').addEventListener('input', function() {
+                document.getElementById('jammingValue').textContent = this.value;
+            });
+            
+            // Prevent zoom on double tap
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        }
+
+        function startSystemMonitoring() {
+            // Update mission timer
+            setInterval(() => {
+                const elapsed = Date.now() - missionStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('missionTime').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+            
+            // Battery simulation
+            setInterval(() => {
+                batteryLevel = Math.max(0, batteryLevel - 0.1);
+                document.getElementById('batteryLevel').textContent = Math.round(batteryLevel) + '%';
+                
+                if (batteryLevel < 20) {
+                    addTerminalLine(`LOW BATTERY WARNING: ${Math.round(batteryLevel)}%`, 'warning');
+                }
+            }, 60000); // Every minute
+            
+            // Random events
+            setInterval(() => {
+                if (Math.random() < 0.3) {
+                    const events = [
+                        'RF signal detected',
+                        'GPS accuracy improved',
+                        'Network latency optimized',
+                        'Background scan completed'
+                    ];
+                    const randomEvent = events[Math.floor(Math.random() * events.length)];
+                    addTerminalLine(randomEvent, 'info');
+                }
+            }, 30000); // Every 30 seconds
+        }
+
+        function requestPermissions() {
+            // Request location permission
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        addTerminalLine('Location access granted', 'success');
+                    },
+                    error => {
+                        addTerminalLine('Location access denied', 'warning');
+                    }
+                );
+            }
+            
+            // Request device orientation for compass
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(response => {
+                    if (response === 'granted') {
+                        addTerminalLine('Device orientation access granted', 'success');
+                    }
+                });
+            }
+        }
+
+        function updateCounters() {
+            document.getElementById('threatCounter').textContent = threatCount;
+            document.getElementById('activeThreats').textContent = threatCount;
+            document.getElementById('targetCount').textContent = threatCount + 2; // Include non-threats
+        }
+
+        // Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:text/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgZXZlbnQgPT4gew0KICBldmVudC53YWl0VW50aWwoc2VsZi5za2lwV2FpdGluZygpKTsNCn0pOw0KDQpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2ZldGNoJywgZXZlbnQgPT4gew0KICBldmVudC5yZXNwb25kV2l0aChmZXRjaChldmVudC5yZXF1ZXN0KSk7DQp9KTs=')
+                .then(() => addTerminalLine('PWA service worker registered', 'success'))
+                .catch(() => addTerminalLine('PWA registration failed', 'error'));
+        }
+    </script>
+</body>
