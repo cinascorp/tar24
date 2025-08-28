@@ -4,8 +4,8 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>TAR</title>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
-	<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&v=beta&libraries=maps3d"></script>
+	<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&v=weekly"></script>
+	<script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     <style>
       html,
       body {
@@ -45,8 +45,7 @@
 			right: 0;
 			bottom: 0;
 		}
-		.ol-zoom, .ol-rotate {filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.6));
-		}
+
 		.map-layer-toggle {
 			position: fixed;
 			top: 60px;
@@ -193,11 +192,7 @@
 			background: transparent;
 		}
 
-		/* Position zoom controls on right, beneath L and Copilot */
-	  	.ol-zoom {
-		  left: auto;
-		  left: 10px; 
-		  top: 160px; }
+
 
 		/* Gradient bar for altitude spectrum in guide */
 		.spectrum-bar { 
@@ -368,7 +363,7 @@
 	</div>
 
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+	<!-- OpenLayers removed; using Google Maps -->
 	<script>
 	(function() {
 		const TILE_URLS = [
@@ -415,41 +410,15 @@
 			el.style.backgroundRepeat = 'no-repeat';
 		}
 
-		// OpenLayers map
-		const baseLayer = new ol.layer.Tile({
-			source: new ol.source.XYZ({ url: TILE_URLS[0], attributions: '© OpenStreetMap, © Carto' })
-		});
-		baseLayer.getSource().on('tileloaderror', () => {
-			baseLayer.setSource(new ol.source.OSM());
-		});
-
-		// Bright ESRI map layer
-		const brightLayer = new ol.layer.Tile({
-			source: new ol.source.XYZ({ 
-				url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-				attributions: '© ESRI'
-			}),
-			visible: false
-		});
-
-		// Removed country/province/road overlay layers per request
-		const trackLayer = new ol.layer.Vector({ source: new ol.source.Vector() });
-		const markerLayer = new ol.layer.Vector({ source: new ol.source.Vector() });
-		const selectedFlightLayer = new ol.layer.Vector({ source: new ol.source.Vector() });
-
-		const map = new ol.Map({
-			target: 'map',
-			layers: [baseLayer, brightLayer, trackLayer, markerLayer, selectedFlightLayer],
-			view: new ol.View({ center: ol.proj.fromLonLat([52.600 , 36.500]), zoom: 4, minZoom: 1, maxZoom: 18 })
-		});
-		
-		// Popup overlay
+		// Google Map state
+		let gmap;
+		let markerCluster;
+		let gmarkers = new Map(); // hex -> marker
+		let infoWindow = new google.maps.InfoWindow();
 		const popupEl = document.getElementById('popup');
 		const popupCloser = document.getElementById('popup-closer');
 		const popupContent = document.getElementById('popup-content');
-		const popup = new ol.Overlay({ element: popupEl, autoPan: { animation: { duration: 250 } } });
-		map.addOverlay(popup);
-		popupCloser.addEventListener('click', () => { popup.setPosition(undefined); popupEl.style.display = 'none'; });
+		popupCloser.addEventListener('click', () => { infoWindow.close(); popupEl.style.display = 'none'; });
 
 		// Data state
 		let flightsByHex = new Map(); // hex -> flight object
@@ -499,21 +468,9 @@
 		offcanvasEl.addEventListener('hidden.bs.offcanvas', () => { menuToggleIcon.textContent = '<'; });
 		offcanvasEl.addEventListener('shown.bs.offcanvas', () => { menuToggleIcon.textContent = '>'; });
 
-		// Map layer toggle (and drone icon color)
+		// Map layer toggle placeholder (Google base style switching could be added)
 		mapLayerToggle.addEventListener('click', () => {
-			if (currentMapLayer === 'dark') {
-				baseLayer.setVisible(false);
-				brightLayer.setVisible(true);
-				currentMapLayer = 'bright';
-				mapLayerToggle.textContent = 'L';
-				mapLayerToggle.title = 'Switch to Dark Theme';
-			} else {
-				baseLayer.setVisible(true);
-				brightLayer.setVisible(false);
-				currentMapLayer = 'dark';
-				mapLayerToggle.textContent = 'L';
-				mapLayerToggle.title = 'Switch to Light Theme';
-			}
+			currentMapLayer = currentMapLayer === 'dark' ? 'bright' : 'dark';
 			updateDroneLegendIcons();
 			updateMarkersAndTracks();
 		});
@@ -598,12 +555,23 @@
 			groupSelect.value = currentGroup;
 		}
 
+		function initGoogleMap() {
+			gmap = new google.maps.Map(document.getElementById('map'), {
+				center: { lat: 36.5, lng: 52.6 },
+				zoom: 4,
+				minZoom: 1,
+				maxZoom: 18,
+				mapTypeId: 'roadmap'
+			});
+			markerCluster = new markerClusterer.MarkerClusterer({ map: gmap, markers: [], algorithmOptions: { maxZoom: 10 } });
+		}
+
 		function boundsFromView() {
-			const extent = map.getView().calculateExtent(map.getSize());
-			const [minX, minY, maxX, maxY] = extent;
-			const [minLon, minLat] = ol.proj.toLonLat([minX, minY]);
-			const [maxLon, maxLat] = ol.proj.toLonLat([maxX, maxY]);
-			return { minLat, maxLat, minLon, maxLon };
+			const b = gmap.getBounds();
+			if (!b) return { minLat: -85, maxLat: 85, minLon: -180, maxLon: 180 };
+			const ne = b.getNorthEast();
+			const sw = b.getSouthWest();
+			return { minLat: sw.lat(), maxLat: ne.lat(), minLon: sw.lng(), maxLon: ne.lng() };
 		}
 
 		// FR24 fetch with CORS fallbacks
@@ -678,7 +646,7 @@
 				}
 				const alt_m = alt != null ? feetToMeters(alt) : null; // FR24 typically in feet
 				const spd_kmh = spd != null ? toKmH(spd) : null; // FR24 speed often in knots
-				result.push({ hex: key, lat, lon, heading, alt_ft: alt, alt_m, spd_kmh, callsign, reg, acType, ts });
+				result.push({ hex: key, lat, lon, heading, alt_ft: alt, alt_m, spd_kmh, callsign, reg, acType, ts, raw: arr });
 			}
 			return { flights: result, fullCount };
 		}
@@ -754,31 +722,22 @@
 		}
 		function getDroneIconColor() { return currentMapLayer === 'dark' ? '#ffffff' : '#000000'; }
 
-		function featureForFlight(f) {
+		function markerIconForFlight(f) {
 			const category = categorize(f);
-			const point = new ol.geom.Point(ol.proj.fromLonLat([f.lon, f.lat]));
-			let style;
-			if (category === 'drone') {
-				style = new ol.style.Style({ image: new ol.style.Icon({ src: DRONE_SVG, scale: 1.0, color: getDroneIconColor() }) });
-			} else if (category === 'helicopter') {
-				style = new ol.style.Style({ image: new ol.style.Icon({ src: HELI_SVG, scale: 1.0 }) });
-			} else if (category === 'military') {
-				style = new ol.style.Style({ image: new ol.style.Icon({ src: FIGHTER_SVG, scale: 1.0, color: COLORS.military, rotation: (f.heading||0) * Math.PI / 180 }) });
-			} else {
+			let url = AIRPLANE_SVG;
+			let color = '#ffffff';
+			if (category === 'drone') url = DRONE_SVG;
+			else if (category === 'helicopter') url = HELI_SVG;
+			else if (category === 'military') { url = FIGHTER_SVG; color = COLORS.military; }
+			else {
 				const target = spectrumColorForAltitudeMeters((f.agl_m != null ? f.agl_m : f.alt_m) || 0);
-				const color = getSmoothedColor(f.hex, target);
-				const capacity = estimatePassengerCapacity(f);
-				if (capacity === 'small_prop') {
-					style = new ol.style.Style({ image: new ol.style.Icon({ src: AIRPLANE_PROP_SVG, scale: 1.0, color, rotation: (f.heading||0) * Math.PI / 180 }) });
-				} else if (capacity === 'small_passenger') {
-					style = new ol.style.Style({ image: new ol.style.Icon({ src: AIRPLANE_SMALL_SVG, scale: 1.0, color, rotation: (f.heading||0) * Math.PI / 180 }) });
-				} else {
-					style = new ol.style.Style({ image: new ol.style.Icon({ src: AIRPLANE_SVG, scale: 1.0, color, rotation: (f.heading||0) * Math.PI / 180 }) });
-				}
+				color = getSmoothedColor(f.hex, target);
 			}
-			const feature = new ol.Feature({ geometry: point, hex: f.hex, data: f, category });
-			feature.setStyle(style);
-			return feature;
+			return {
+				url: url,
+				scaledSize: new google.maps.Size(24, 24),
+				anchor: new google.maps.Point(12, 12)
+			};
 		}
 
 		function addToTrack(f) {
@@ -789,43 +748,65 @@
 		}
 
 		function drawTrack(hex, category) {
-			const pts = tracksByHex.get(hex) || [];
-			if (pts.length < 2) return null;
-			const features = [];
-			for (let i=0; i<pts.length-1; i++) {
-				const seg = new ol.geom.LineString([ ol.proj.fromLonLat([pts[i].lon, pts[i].lat]), ol.proj.fromLonLat([pts[i+1].lon, pts[i+1].lat]) ]);
-				let baseColor;
-				if (category === 'drone') baseColor = getDroneIconColor();
-				else if (category === 'military') baseColor = COLORS.military;
-				else baseColor = spectrumColorForAltitudeMeters(pts[i].alt_m);
-				const feat = new ol.Feature({ geometry: seg, hex });
-				feat.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: baseColor, width: 2 }) }));
-				features.push(feat);
-			}
-			return features;
+			// Tracks (polylines) could be implemented here with google.maps.Polyline if needed
+			return null;
 		}
 
 		function updateMarkersAndTracks() {
-			markerLayer.getSource().clear();
-			trackLayer.getSource().clear();
+			// Clear cluster and markers
+			if (markerCluster) markerCluster.clearMarkers();
+			gmarkers.forEach(m => m.setMap(null));
+			gmarkers.clear();
 			if (sortedHexes.length === 0) return;
 			const labels = makeGroupLabels(Math.max(lastFullCount || 0, sortedHexes.length));
 			const idx = labels.indexOf(currentGroup);
 			const start = idx >= 0 ? idx*1000 : 0;
 			const end = start + 1000;
 			const slice = sortedHexes.slice(start, end);
+			const newMarkers = [];
 			for (const hex of slice) {
 				const f = flightsByHex.get(hex);
 				if (!f) continue;
-				const feat = featureForFlight(f);
-				markerLayer.getSource().addFeature(feat);
-				addToTrack(f);
-				if (selectedFlights.has(hex)) {
+				const marker = new google.maps.Marker({
+					position: { lat: f.lat, lng: f.lon },
+					icon: markerIconForFlight(f),
+					title: f.callsign || f.reg || f.hex
+				});
+				marker.addListener('click', () => {
 					const category = categorize(f);
-					const segs = drawTrack(f.hex, category);
-					if (segs) segs.forEach(sf => trackLayer.getSource().addFeature(sf));
-				}
+					const agl = (f.agl_m != null) ? f.agl_m : null;
+					const link = makeFR24Link(f);
+					let extra = '';
+					if (Array.isArray(f.raw)) {
+						const rows = f.raw.slice(0,19).map((v, i) => `<tr><td>#${i+1}</td><td>${(v??'').toString()}</td></tr>`).join('');
+						extra = `
+							<div class="mt-2">
+								<strong>Raw parameters (first 19)</strong>
+								<table class="table table-sm table-dark table-striped"><tbody>${rows}</tbody></table>
+							</div>`;
+					}
+					const content = `
+						<div class="d-flex justify-content-between align-items-center">
+							<strong>${f.callsign || f.reg || f.hex}</strong>
+							<span class="badge badge-outline">${category.toUpperCase()}</span>
+						</div>
+						<div class="small-muted">Hex: ${f.hex}${f.acType ? ' • Type: ' + f.acType : ''}</div>
+						<div>Lat: ${f.lat.toFixed(4)} • Lon: ${f.lon.toFixed(4)}</div>
+						<div>Alt (MSL): ${f.alt_m != null ? f.alt_m + ' m (' + metersToFeet(f.alt_m) + ' ft)' : '—'}</div>
+						${category==='drone' ? `<div>Alt (AGL): ${agl != null ? agl + ' m' : '…'}</div>` : ''}
+						<div>Speed: ${f.spd_kmh != null ? f.spd_kmh + ' km/h' : '—'}</div>
+						<div>Heading: ${f.heading != null ? f.heading + '°' : '—'}</div>
+						<div class="mt-1">FR24 3D: <a class="link-warning" href="${link}" target="_blank" rel="noopener">${link}</a></div>
+						${extra}
+					`;
+					infoWindow.setContent(content);
+					infoWindow.open(gmap, marker);
+				});
+				gmarkers.set(hex, marker);
+				newMarkers.push(marker);
+				addToTrack(f);
 			}
+			if (markerCluster) markerCluster.addMarkers(newMarkers);
 		}
 
 		function updateInfoTables(allFlights) {
@@ -1004,51 +985,12 @@
 			updateSelectedFlightsDisplay();
 		}
 		function updateSelectedFlightsDisplay() {
-			selectedFlightLayer.getSource().clear();
 			document.getElementById('selectedFlightsCount').textContent = selectedFlights.size;
-			for (const hex of selectedFlights) {
-				const f = flightsByHex.get(hex);
-				if (!f) continue;
-				const trackFeatures = drawEnhancedTrack(f.hex, categorize(f));
-				trackFeatures.forEach(feat => selectedFlightLayer.getSource().addFeature(feat));
-			}
+			// Track rendering skipped for Google Maps in this iteration
 		}
 		function clearAllSelections() { selectedFlights.clear(); updateSelectedFlightsDisplay(); }
 
-		function drawEnhancedTrack(hex, category) {
-			const pts = tracksByHex.get(hex) || [];
-			if (pts.length < 2) return [];
-			const features = [];
-			const lineCoords = pts.map(p => ol.proj.fromLonLat([p.lon, p.lat]));
-			const line = new ol.geom.LineString(lineCoords);
-			let baseColor;
-			if (category === 'drone') baseColor = getDroneIconColor();
-			else if (category === 'military') baseColor = COLORS.military;
-			else baseColor = spectrumColorForAltitudeMeters(pts[pts.length-1]?.alt_m || 0);
-			const trackFeature = new ol.Feature({ geometry: line, hex });
-			trackFeature.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: baseColor, width: 4, lineDash: [10, 5] }) }));
-			features.push(trackFeature);
-			if (pts.length > 0 && category !== 'drone') {
-				const lastPt = pts[pts.length - 1];
-				const heading = lastPt.heading || 0;
-				const futureCoords = [];
-				let futureLon = lastPt.lon;
-				let futureLat = lastPt.lat;
-				for (let i = 0; i < 10; i++) {
-					const distance = (i + 1) * 0.1; // 0.1 degrees
-					futureLon += distance * Math.cos(heading * Math.PI / 180);
-					futureLat += distance * Math.sin(heading * Math.PI / 180);
-					futureCoords.push(ol.proj.fromLonLat([futureLon, futureLat]));
-				}
-				if (futureCoords.length > 1) {
-					const futureLine = new ol.geom.LineString(futureCoords);
-					const futureFeature = new ol.Feature({ geometry: futureLine, hex });
-					futureFeature.setStyle(new ol.style.Style({ stroke: new ol.style.Stroke({ color: baseColor, width: 2, lineDash: [5, 5] }) }));
-					features.push(futureFeature);
-				}
-			}
-			return features;
-		}
+		function drawEnhancedTrack(hex, category) { return []; }
 
 		// Load loop
 		async function refresh() {
@@ -1121,6 +1063,7 @@
 		// initial
 		setGroupOptions(28000);
 		updateDroneLegendIcons();
+		initGoogleMap();
 		refresh();
 		startAutoUpdate();
 	})();
