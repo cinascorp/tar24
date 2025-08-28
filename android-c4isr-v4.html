@@ -623,8 +623,6 @@
 </head>
 <body>
     <div>
-    <div id="map">
-    </div>
 
 
      <!-- Mobile Header -->
@@ -887,6 +885,7 @@
 
     
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&callback=initMap"></script>
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     <script>
         async function getRotatedIcon(url, rotation, size = 32) {
             return new Promise((resolve) => {
@@ -912,11 +911,16 @@
         }
 
         function initMap() {
-            // Initialize standard Google Map
+            // Initialize Google Map with clustering
             const map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: 35.693, lng: 51.330 },
                 zoom: 6
             });
+            // Expose for other handlers (e.g., tab resize)
+            window.gMap = map;
+
+            // Create a marker clusterer instance
+            const clusterer = new markerClusterer.MarkerClusterer({ map, markers: [] });
 
             const airplaneUrl = 'https://img.icons8.com/3d-fluency/94/airplane-1.png';
             const droneUrl = 'https://img.icons8.com/wired/64/drone-bottom-view.png';
@@ -942,8 +946,7 @@
             async function updateFlights() {
                 const flightData = await fetchFlightData();
 
-                // Clear existing markers
-                markers.forEach(marker => marker.setMap(null));
+                // Reset markers array; clusterer will manage display
                 markers = [];
 
                 // Iterate through flight data
@@ -971,7 +974,7 @@
                     // Create marker for each flight
                     const marker = new google.maps.Marker({
                         position: { lat: parseFloat(lat), lng: parseFloat(lng) },
-                        map: map,
+                        map: null,
                         icon: {
                             url: rotatedUrl,
                             scaledSize: new google.maps.Size(32, 32),
@@ -1019,6 +1022,9 @@
                     markers.push(marker);
                 }
 
+                // Update clusterer with new markers
+                clusterer.setMarkers(markers);
+
                 // Refresh flight data every 10 seconds
                 setTimeout(updateFlights, 10000);
             }
@@ -1050,8 +1056,7 @@
         function initializeApp() {
             showLoading();
             
-            // Initialize map
-            initializeMap();
+            // Map is initialized by Google callback initMap
             
             // Start monitoring
             startSystemMonitoring();
@@ -1067,39 +1072,7 @@
             addTerminalLine('System fully initialized', 'success');
         }
 
-        function initializeMap() {
-            map = L.map('map', {
-                center: [35.6892, 51.3890],
-                zoom: 10,
-                zoomControl: false,
-                attributionControl: false
-            });
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: 'C4ISR Mobile v3.0',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
-
-            // Add user location if available
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const userLocation = [position.coords.latitude, position.coords.longitude];
-                    map.setView(userLocation, 12);
-                    
-                    L.marker(userLocation, {
-                        icon: L.divIcon({
-                            html: '<div style="color: #03dac6; font-size: 20px;">📍</div>',
-                            className: 'user-marker',
-                            iconSize: [30, 30]
-                        })
-                    }).addTo(map).bindPopup('Your Location');
-                });
-            }
-
-            // Add sample targets
-            addSampleTargets();
-        }
+        // Leaflet map initialization removed in favor of Google Maps
 
         function addSampleTargets() {
             const targets = [
@@ -1152,11 +1125,11 @@
             
             currentTab = tabName;
             
-            // Resize map if map tab is selected
-            if (tabName === 'map') {
+            // Resize Google Map if map tab is selected
+            if (tabName === 'map' && window.gMap) {
                 setTimeout(() => {
-                    map.invalidateSize();
-                }, 100);
+                    google.maps.event.trigger(window.gMap, 'resize');
+                }, 150);
             }
         }
 
