@@ -1,0 +1,1433 @@
+/* TAR24 v4 - Top Grade Command & Control System */
+/* Pure JavaScript and CSS for Native App Performance */
+
+/* Load OpenLayers Library */
+const olScript = document.createElement('script');
+olScript.src = 'https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js';
+olScript.onload = function() {
+    // Load OpenLayers CSS
+    const olCSS = document.createElement('link');
+    olCSS.rel = 'stylesheet';
+    olCSS.href = 'https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css';
+    document.head.appendChild(olCSS);
+    
+    // Initialize app after OpenLayers loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
+};
+document.head.appendChild(olScript);
+
+/* CSS Styles */
+const styles = `
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+        color: #ffffff;
+        overflow: hidden;
+        height: 100vh;
+        user-select: none;
+    }
+
+    /* Header */
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(10, 10, 10, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 2px solid #00ff41;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        box-shadow: 0 4px 20px rgba(0, 255, 65, 0.2);
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .logo {
+        font-size: 20px;
+        font-weight: 700;
+        color: #00ff41;
+        text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+        letter-spacing: 2px;
+    }
+
+    .version {
+        font-size: 12px;
+        color: #bfbfbf;
+        background: rgba(0, 255, 65, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(0, 255, 65, 0.3);
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .threat-level {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        background: rgba(255, 0, 0, 0.1);
+        border: 1px solid rgba(255, 0, 0, 0.3);
+        color: #ff0000;
+        font-weight: 600;
+    }
+
+    .threat-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ff0000;
+        animation: pulse 2s infinite;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        background: rgba(0, 255, 65, 0.1);
+        border: 1px solid rgba(0, 255, 65, 0.3);
+        color: #00ff41;
+        font-weight: 600;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #00ff41;
+        animation: pulse 1s infinite;
+    }
+
+    /* Main Container */
+    .main-container {
+        display: grid;
+        grid-template-columns: 350px 400px 1fr;
+        grid-template-rows: 1fr;
+        height: 100vh;
+        padding-top: 60px;
+        gap: 1px;
+        background: #1a1a1a;
+    }
+
+    /* Control Panel */
+    .control-panel {
+        background: rgba(10, 10, 10, 0.95);
+        border-right: 1px solid #333;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .panel-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #333;
+    }
+
+    .panel-header h3 {
+        color: #00ff41;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .btn-primary {
+        background: #0066cc;
+        color: white;
+        border: 1px solid #0066cc;
+    }
+
+    .btn-primary:hover {
+        background: #0052a3;
+        box-shadow: 0 0 20px rgba(0, 102, 204, 0.3);
+    }
+
+    .btn-secondary {
+        background: #666;
+        color: white;
+        border: 1px solid #666;
+    }
+
+    .btn-secondary:hover {
+        background: #555;
+        box-shadow: 0 0 20px rgba(102, 102, 102, 0.3);
+    }
+
+    .btn-success {
+        background: #00aa00;
+        color: white;
+        border: 1px solid #00aa00;
+    }
+
+    .btn-success:hover {
+        background: #008800;
+        box-shadow: 0 0 20px rgba(0, 170, 0, 0.3);
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .stats-group {
+        margin-bottom: 20px;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #333;
+    }
+
+    .stat-label {
+        color: #bfbfbf;
+        font-size: 14px;
+    }
+
+    .stat-value {
+        color: #00ff41;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .data-source {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px;
+        background: rgba(0, 255, 65, 0.05);
+        border: 1px solid rgba(0, 255, 65, 0.2);
+        border-radius: 6px;
+    }
+
+    .source-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #00ff41;
+        animation: pulse 2s infinite;
+    }
+
+    .source-indicator.active {
+        background: #00ff41;
+    }
+
+    /* Flight Panel */
+    .flight-panel {
+        background: rgba(10, 10, 10, 0.95);
+        border-right: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .panel-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .panel-controls select,
+    .panel-controls input {
+        padding: 8px 12px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        background: #1a1a1a;
+        color: white;
+        font-size: 14px;
+    }
+
+    .panel-controls input {
+        flex: 1;
+    }
+
+    .flight-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .loading {
+        text-align: center;
+        color: #bfbfbf;
+        padding: 40px;
+        font-style: italic;
+    }
+
+    .flight-group {
+        margin-bottom: 20px;
+        border: 1px solid #333;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .group-header {
+        background: #1a1a1a;
+        padding: 10px 15px;
+        color: #00ff41;
+        font-weight: 600;
+        border-bottom: 1px solid #333;
+    }
+
+    .group-flights {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .flight-row {
+        display: flex;
+        padding: 12px 15px;
+        border-bottom: 1px solid #333;
+        background: rgba(26, 26, 26, 0.8);
+        transition: background 0.3s ease;
+    }
+
+    .flight-row:hover {
+        background: rgba(0, 255, 65, 0.1);
+    }
+
+    .flight-row:last-child {
+        border-bottom: none;
+    }
+
+    .flight-info,
+    .flight-position,
+    .flight-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .flight-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .flight-callsign {
+        font-weight: 600;
+        color: #00ff41;
+        font-size: 14px;
+    }
+
+    .flight-reg {
+        color: #bfbfbf;
+        font-size: 12px;
+    }
+
+    .flight-type {
+        color: #999;
+        font-size: 11px;
+    }
+
+    .flight-coords {
+        color: #bfbfbf;
+        font-size: 12px;
+        font-family: monospace;
+    }
+
+    .flight-alt,
+    .flight-speed {
+        color: #bfbfbf;
+        font-size: 12px;
+    }
+
+    .flight-heading {
+        color: #bfbfbf;
+        font-size: 12px;
+    }
+
+    .flight-category {
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .flight-source {
+        color: #999;
+        font-size: 11px;
+    }
+
+    /* Map Container */
+    .map-container {
+        background: #000;
+        position: relative;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Flight Popup */
+    .flight-popup {
+        position: absolute;
+        background: rgba(10, 10, 10, 0.95);
+        border: 2px solid #00ff41;
+        border-radius: 8px;
+        padding: 15px;
+        min-width: 250px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #333;
+    }
+
+    .popup-header h4 {
+        color: #00ff41;
+        margin: 0;
+    }
+
+    .popup-header button {
+        background: none;
+        border: none;
+        color: #bfbfbf;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .popup-header button:hover {
+        color: #ff0000;
+    }
+
+    .popup-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .popup-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .popup-row .label {
+        color: #bfbfbf;
+        font-size: 12px;
+    }
+
+    .popup-row .value {
+        color: #00ff41;
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+
+    .modal-content {
+        background: rgba(10, 10, 10, 0.95);
+        border: 2px solid #00ff41;
+        border-radius: 8px;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        width: 90%;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #333;
+    }
+
+    .modal-header h3 {
+        color: #00ff41;
+        margin: 0;
+    }
+
+    .modal-header button {
+        background: none;
+        border: none;
+        color: #bfbfbf;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-header button:hover {
+        color: #ff0000;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #333;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        color: #bfbfbf;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .detail-value {
+        color: #00ff41;
+        font-weight: 600;
+        font-size: 14px;
+        font-family: monospace;
+    }
+
+    /* Error Message */
+    .error-message {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: rgba(255, 0, 0, 0.9);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        z-index: 3000;
+        animation: slideIn 0.3s ease;
+    }
+
+    .no-flights {
+        text-align: center;
+        color: #bfbfbf;
+        padding: 40px;
+        font-style: italic;
+    }
+
+    /* Animations */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #1a1a1a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #00ff41;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+        .main-container {
+            grid-template-columns: 300px 350px 1fr;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .main-container {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto 1fr;
+        }
+        
+        .control-panel,
+        .flight-panel {
+            max-height: 300px;
+        }
+    }
+</style>
+`;
+
+// Inject styles
+document.head.insertAdjacentHTML('beforeend', styles);
+
+/* Global Variables */
+let map, flightLayer, flightData = [], currentBounds = null;
+let updateInterval = null;
+let isTracking = false;
+let flightCount = 0;
+let totalFlights = 0;
+
+/* Configuration */
+const CONFIG = {
+    updateInterval: 5000,
+    maxFlightsPerGroup: 1500,
+    maxAge: 14400,
+    bounds: {
+        north: 90,
+        south: -90,
+        east: 180,
+        west: -180
+    }
+};
+
+/* Flight Data Structure - 19 Parameters */
+const FLIGHT_PARAMS = {
+    hex: 'ICAO24',           // Aircraft ICAO24 identifier
+    lat: 'Latitude',         // Current latitude
+    lon: 'Longitude',        // Current longitude
+    heading: 'Heading',      // Aircraft heading in degrees
+    alt_ft: 'Altitude (ft)', // Altitude in feet
+    alt_m: 'Altitude (m)',   // Altitude in meters
+    spd_kmh: 'Speed (km/h)', // Ground speed in km/h
+    spd_kts: 'Speed (kts)',  // Ground speed in knots
+    callsign: 'Callsign',    // Flight callsign
+    reg: 'Registration',     // Aircraft registration
+    acType: 'Aircraft Type', // Aircraft type code
+    origin: 'Origin',        // Origin airport
+    destination: 'Destination', // Destination airport
+    squawk: 'Squawk Code',   // Transponder squawk code
+    timestamp: 'Timestamp',  // Last update timestamp
+    mlat: 'MLAT',           // Multilateration source
+    adsb: 'ADSB',           // ADSB source
+    sat: 'Satellite',       // Satellite source
+    gnd: 'Ground Speed'     // Ground speed indicator
+};
+
+/* Colors for different aircraft categories */
+const COLORS = {
+    military: '#ff0000',
+    passenger: '#00ff41',
+    cargo: '#0066cc',
+    private: '#ffaa00',
+    drone: '#ff00ff',
+    unknown: '#ffffff'
+};
+
+/* Initialize Application */
+function initApp() {
+    createUI();
+    initializeMap();
+    startFlightTracking();
+    console.log('TAR24 v4 - Top Grade C4ISR System Initialized');
+}
+
+/* Create User Interface */
+function createUI() {
+    const body = document.body;
+    
+    // Header
+    const header = document.createElement('div');
+    header.className = 'header';
+    header.innerHTML = `
+        <div class="header-left">
+            <div class="logo">TAR24 v4</div>
+            <div class="version">Command & Control System</div>
+        </div>
+        <div class="header-right">
+            <div class="threat-level">
+                <div class="threat-indicator"></div>
+                <span>THREAT LEVEL: ALPHA</span>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span>ACTIVE</span>
+            </div>
+        </div>
+    `;
+    
+    // Main Container
+    const mainContainer = document.createElement('div');
+    mainContainer.className = 'main-container';
+    
+    // Control Panel
+    const controlPanel = document.createElement('div');
+    controlPanel.className = 'control-panel';
+    controlPanel.innerHTML = `
+        <div class="panel-header">
+            <h3>Flight Control Center</h3>
+        </div>
+        <div class="control-group">
+            <button id="toggleTracking" class="btn btn-primary">Stop Tracking</button>
+            <button id="refreshData" class="btn btn-secondary">Refresh Data</button>
+            <button id="exportData" class="btn btn-success">Export Data</button>
+        </div>
+        <div class="stats-group">
+            <div class="stat-item">
+                <span class="stat-label">Active Flights:</span>
+                <span id="activeFlights" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Flights:</span>
+                <span id="totalFlights" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Last Update:</span>
+                <span id="lastUpdate" class="stat-value">--</span>
+            </div>
+        </div>
+        <div class="data-source">
+            <span class="source-indicator active"></span>
+            <span>FlightRadar24 Live Data</span>
+        </div>
+    `;
+    
+    // Flight List Panel
+    const flightPanel = document.createElement('div');
+    flightPanel.className = 'flight-panel';
+    flightPanel.innerHTML = `
+        <div class="panel-header">
+            <h3>Flight Data (19 Parameters)</h3>
+            <div class="panel-controls">
+                <select id="categoryFilter">
+                    <option value="all">All Categories</option>
+                    <option value="military">Military</option>
+                    <option value="passenger">Passenger</option>
+                    <option value="cargo">Cargo</option>
+                    <option value="private">Private</option>
+                    <option value="drone">Drone</option>
+                </select>
+                <input type="text" id="searchFlight" placeholder="Search flights..." />
+            </div>
+        </div>
+        <div class="flight-list" id="flightList">
+            <div class="loading">Loading real-time flight data...</div>
+        </div>
+    `;
+    
+    // Map Container
+    const mapContainer = document.createElement('div');
+    mapContainer.id = 'map';
+    mapContainer.className = 'map-container';
+    
+    // Assemble UI
+    mainContainer.appendChild(controlPanel);
+    mainContainer.appendChild(flightPanel);
+    mainContainer.appendChild(mapContainer);
+    
+    body.appendChild(header);
+    body.appendChild(mainContainer);
+    
+    // Event Listeners
+    document.getElementById('toggleTracking').addEventListener('click', toggleTracking);
+    document.getElementById('refreshData').addEventListener('click', refreshFlightData);
+    document.getElementById('exportData').addEventListener('click', exportFlightData);
+    document.getElementById('categoryFilter').addEventListener('change', filterFlights);
+    document.getElementById('searchFlight').addEventListener('input', searchFlights);
+}
+
+/* Initialize Map */
+function initializeMap() {
+    // Create OpenLayers map
+    const mapElement = document.getElementById('map');
+    
+    // Create flight layer
+    flightLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: function(feature) {
+            return createFlightStyle(feature);
+        }
+    });
+    
+    // Create base map
+    const baseLayer = new ol.layer.Tile({
+        source: new ol.source.OSM()
+    });
+    
+    // Create map
+    map = new ol.Map({
+        target: 'map',
+        layers: [baseLayer, flightLayer],
+        view: new ol.View({
+            center: ol.proj.fromLonLat([0, 0]),
+            zoom: 2
+        }),
+        controls: ol.control.defaults().extend([
+            new ol.control.ScaleLine(),
+            new ol.control.FullScreen()
+        ])
+    });
+    
+    // Map event listeners
+    map.on('moveend', updateBounds);
+    map.on('click', handleMapClick);
+    
+    // Initialize bounds
+    updateBounds();
+}
+
+/* Start Flight Tracking */
+function startFlightTracking() {
+    isTracking = true;
+    updateFlightData();
+    updateInterval = setInterval(updateFlightData, CONFIG.updateInterval);
+    console.log('Flight tracking started');
+}
+
+/* Stop Flight Tracking */
+function stopFlightTracking() {
+    isTracking = false;
+    if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+    }
+    console.log('Flight tracking stopped');
+}
+
+/* Toggle Tracking */
+function toggleTracking() {
+    const button = document.getElementById('toggleTracking');
+    if (isTracking) {
+        stopFlightTracking();
+        button.textContent = 'Start Tracking';
+        button.className = 'btn btn-success';
+    } else {
+        startFlightTracking();
+        button.textContent = 'Stop Tracking';
+        button.className = 'btn btn-primary';
+    }
+}
+
+/* Update Flight Data */
+async function updateFlightData() {
+    try {
+        const bounds = getCurrentBounds();
+        const data = await fetchFlightRadar24Data(bounds);
+        
+        if (data && data.flights) {
+            flightData = data.flights;
+            flightCount = data.flights.length;
+            totalFlights = data.full_count || data.flights.length;
+            
+            updateMap();
+            updateFlightList();
+            updateStats();
+            
+            console.log(`Updated ${flightCount} flights from FlightRadar24`);
+        }
+    } catch (error) {
+        console.error('Error updating flight data:', error);
+        showError('Failed to update flight data from FlightRadar24');
+    }
+}
+
+/* Fetch FlightRadar24 Data */
+async function fetchFlightRadar24Data(bounds) {
+    const params = new URLSearchParams({
+        faa: '1',
+        satellite: '1',
+        mlat: '1',
+        flarm: '1',
+        adsb: '1',
+        gnd: '1',
+        air: '1',
+        vehicles: '1',
+        estimated: '1',
+        maxage: CONFIG.maxAge.toString(),
+        gliders: '1',
+        stats: '1',
+        bounds: `${bounds.north},${bounds.south},${bounds.west},${bounds.east}`
+    });
+    
+    const urls = [
+        `https://data-cloud.flightradar24.com/zones/fcgi/feed.js?${params}`,
+        `https://data-live.flightradar24.com/zones/fcgi/feed.js?${params}`
+    ];
+    
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'User-Agent': 'TAR24-v4-C4ISR-System'
+                }
+            });
+            
+            if (!response.ok) continue;
+            
+            const text = await response.text();
+            let data = null;
+            
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                // Handle JavaScript function response
+                data = eval('(' + text + ')');
+            }
+            
+            if (data && typeof data === 'object') {
+                return parseFlightRadar24Data(data);
+            }
+        } catch (e) {
+            continue;
+        }
+    }
+    
+    throw new Error('Failed to fetch data from all FlightRadar24 endpoints');
+}
+
+/* Parse FlightRadar24 Data */
+function parseFlightRadar24Data(data) {
+    const flights = [];
+    let fullCount = 0;
+    
+    if (data.full_count) {
+        fullCount = Number(data.full_count) || 0;
+    }
+    
+    for (const [key, val] of Object.entries(data)) {
+        if (!Array.isArray(val)) continue;
+        
+        const flight = parseFlightArray(key, val);
+        if (flight) {
+            flights.push(flight);
+        }
+    }
+    
+    return { flights, fullCount };
+}
+
+/* Parse Individual Flight Array */
+function parseFlightArray(hex, arr) {
+    // FlightRadar24 data format: [lat, lon, heading, alt, speed, callsign, reg, type, ...]
+    const latLon = extractLatLon(arr);
+    if (!latLon) return null;
+    
+    return {
+        hex: hex,
+        lat: Number(latLon.lat),
+        lon: Number(latLon.lon),
+        heading: extractHeading(arr),
+        alt_ft: extractAltitude(arr),
+        alt_m: extractAltitude(arr) ? Math.round(extractAltitude(arr) * 0.3048) : null,
+        spd_kmh: extractSpeed(arr),
+        spd_kts: extractSpeed(arr) ? Math.round(extractSpeed(arr) / 1.852) : null,
+        callsign: extractCallsign(arr),
+        reg: extractRegistration(arr),
+        acType: extractAircraftType(arr),
+        origin: extractOrigin(arr),
+        destination: extractDestination(arr),
+        squawk: extractSquawk(arr),
+        timestamp: Date.now(),
+        mlat: extractMLAT(arr),
+        adsb: extractADSB(arr),
+        sat: extractSatellite(arr),
+        gnd: extractGroundSpeed(arr)
+    };
+}
+
+/* Extract Functions */
+function extractLatLon(arr) {
+    for (let i = 0; i < arr.length - 1; i++) {
+        const a = Number(arr[i]);
+        const b = Number(arr[i + 1]);
+        if (isFinite(a) && isFinite(b) && a >= -90 && a <= 90 && b >= -180 && b <= 180) {
+            return { lat: a, lon: b };
+        }
+    }
+    return null;
+}
+
+function extractHeading(arr) {
+    for (const val of arr) {
+        if (typeof val === 'number' && val >= 0 && val <= 360) {
+            return Math.round(val);
+        }
+    }
+    return null;
+}
+
+function extractAltitude(arr) {
+    for (const val of arr) {
+        if (typeof val === 'number' && val > 0 && val < 65000) {
+            return Math.round(val);
+        }
+    }
+    return null;
+}
+
+function extractSpeed(arr) {
+    for (const val of arr) {
+        if (typeof val === 'number' && val >= 0 && val < 1200) {
+            return Math.round(val * 1.852); // Convert knots to km/h
+        }
+    }
+    return null;
+}
+
+function extractCallsign(arr) {
+    for (const val of arr) {
+        if (typeof val === 'string' && /[A-Z0-9]{3,}/.test(val)) {
+            return val.trim();
+        }
+    }
+    return null;
+}
+
+function extractRegistration(arr) {
+    for (const val of arr) {
+        if (typeof val === 'string' && /^[A-Z0-9-]{3,}$/.test(val)) {
+            return val.trim();
+        }
+    }
+    return null;
+}
+
+function extractAircraftType(arr) {
+    for (const val of arr) {
+        if (typeof val === 'string' && /^[A-Z0-9]{3,4}$/.test(val)) {
+            return val.trim();
+        }
+    }
+    return null;
+}
+
+function extractOrigin(arr) {
+    // Extract origin airport code
+    for (const val of arr) {
+        if (typeof val === 'string' && /^[A-Z]{3}$/.test(val)) {
+            return val;
+        }
+    }
+    return null;
+}
+
+function extractDestination(arr) {
+    // Extract destination airport code
+    for (const val of arr) {
+        if (typeof val === 'string' && /^[A-Z]{3}$/.test(val)) {
+            return val;
+        }
+    }
+    return null;
+}
+
+function extractSquawk(arr) {
+    // Extract squawk code
+    for (const val of arr) {
+        if (typeof val === 'string' && /^[0-7]{4}$/.test(val)) {
+            return val;
+        }
+    }
+    return null;
+}
+
+function extractMLAT(arr) {
+    // Check if MLAT source
+    return arr.some(val => val === 'mlat') ? 'MLAT' : null;
+}
+
+function extractADSB(arr) {
+    // Check if ADSB source
+    return arr.some(val => val === 'adsb') ? 'ADSB' : null;
+}
+
+function extractSatellite(arr) {
+    // Check if satellite source
+    return arr.some(val => val === 'sat') ? 'SAT' : null;
+}
+
+function extractGroundSpeed(arr) {
+    // Check if ground speed indicator
+    return arr.some(val => val === 'gnd') ? 'GND' : 'AIR';
+}
+
+/* Update Map */
+function updateMap() {
+    const source = flightLayer.getSource();
+    source.clear();
+    
+    flightData.forEach(flight => {
+        const feature = new ol.Feature({
+            geometry: new ol.geom.Point(ol.proj.fromLonLat([flight.lon, flight.lat])),
+            flight: flight
+        });
+        source.addFeature(feature);
+    });
+}
+
+/* Create Flight Style */
+function createFlightStyle(feature) {
+    const flight = feature.get('flight');
+    const category = categorizeAircraft(flight);
+    
+    let color = COLORS[category] || COLORS.unknown;
+    
+    return new ol.style.Style({
+        image: new ol.style.Circle({
+            radius: 4,
+            fill: new ol.style.Fill({ color: color }),
+            stroke: new ol.style.Stroke({ color: '#ffffff', width: 1 })
+        })
+    });
+}
+
+/* Categorize Aircraft */
+function categorizeAircraft(flight) {
+    const militaryPrefixes = ['RCH', 'QID', 'LAGR', 'NATO', 'PAT', 'BOMBER', 'USAF', 'RAF', 'AF', 'MIL'];
+    const privateRegPatterns = [/^N[0-9A-Z]{1,5}$/i, /^[A-Z]{1,2}-[A-Z]{3,5}$/i];
+    const airlineLike = /^[A-Z]{2,3}\d{2,4}[A-Z]?$/;
+    
+    // Check for drones/UAVs
+    if (isDrone(flight)) return 'drone';
+    
+    // Check for military
+    if (flight.callsign && militaryPrefixes.some(p => flight.callsign.toUpperCase().startsWith(p))) {
+        return 'military';
+    }
+    
+    // Check for passenger airlines
+    if (flight.callsign && airlineLike.test(flight.callsign)) {
+        return 'passenger';
+    }
+    
+    // Check for private
+    if (flight.reg && privateRegPatterns.some(r => r.test(flight.reg))) {
+        return 'private';
+    }
+    
+    return 'cargo';
+}
+
+/* Check if Aircraft is Drone */
+function isDrone(flight) {
+    const spd = flight.spd_kmh || 0;
+    const alt = flight.alt_m || 0;
+    return alt > 0 && alt <= 1200 && spd > 0 && spd <= 120;
+}
+
+/* Update Flight List */
+function updateFlightList() {
+    const flightList = document.getElementById('flightList');
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    
+    let filteredFlights = flightData;
+    if (categoryFilter !== 'all') {
+        filteredFlights = flightData.filter(f => categorizeAircraft(f) === categoryFilter);
+    }
+    
+    // Group flights by 1500 per group
+    const groups = [];
+    for (let i = 0; i < filteredFlights.length; i += CONFIG.maxFlightsPerGroup) {
+        groups.push(filteredFlights.slice(i, i + CONFIG.maxFlightsPerGroup));
+    }
+    
+    let html = '';
+    
+    if (groups.length === 0) {
+        html = '<div class="no-flights">No flights found</div>';
+    } else {
+        groups.forEach((group, groupIndex) => {
+            html += `<div class="flight-group">
+                <div class="group-header">Group ${groupIndex + 1} (${group.length} flights)</div>
+                <div class="group-flights">`;
+            
+            group.forEach(flight => {
+                html += createFlightRow(flight);
+            });
+            
+            html += '</div></div>';
+        });
+    }
+    
+    flightList.innerHTML = html;
+}
+
+/* Create Flight Row */
+function createFlightRow(flight) {
+    const category = categorizeAircraft(flight);
+    const color = COLORS[category] || COLORS.unknown;
+    
+    return `
+        <div class="flight-row" data-hex="${flight.hex}">
+            <div class="flight-info">
+                <div class="flight-callsign">${flight.callsign || 'N/A'}</div>
+                <div class="flight-reg">${flight.reg || 'N/A'}</div>
+                <div class="flight-type">${flight.acType || 'N/A'}</div>
+            </div>
+            <div class="flight-position">
+                <div class="flight-coords">${flight.lat.toFixed(4)}, ${flight.lon.toFixed(4)}</div>
+                <div class="flight-alt">${flight.alt_ft || 'N/A'} ft</div>
+                <div class="flight-speed">${flight.spd_kmh || 'N/A'} km/h</div>
+            </div>
+            <div class="flight-details">
+                <div class="flight-heading">${flight.heading || 'N/A'}°</div>
+                <div class="flight-category" style="color: ${color}">${category.toUpperCase()}</div>
+                <div class="flight-source">${[flight.adsb, flight.mlat, flight.sat].filter(Boolean).join(', ') || 'N/A'}</div>
+            </div>
+            <div class="flight-actions">
+                <button class="btn btn-small" onclick="centerOnFlight('${flight.hex}')">Center</button>
+                <button class="btn btn-small" onclick="showFlightDetails('${flight.hex}')">Details</button>
+            </div>
+        </div>
+    `;
+}
+
+/* Update Statistics */
+function updateStats() {
+    document.getElementById('activeFlights').textContent = flightCount.toLocaleString();
+    document.getElementById('totalFlights').textContent = totalFlights.toLocaleString();
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+}
+
+/* Get Current Map Bounds */
+function getCurrentBounds() {
+    const extent = map.getView().calculateExtent(map.getSize());
+    const bottomLeft = ol.proj.toLonLat([extent[0], extent[1]]);
+    const topRight = ol.proj.toLonLat([extent[2], extent[3]]);
+    
+    return {
+        north: topRight[1],
+        south: bottomLeft[1],
+        east: topRight[0],
+        west: bottomLeft[0]
+    };
+}
+
+/* Update Bounds */
+function updateBounds() {
+    currentBounds = getCurrentBounds();
+}
+
+/* Handle Map Click */
+function handleMapClick(event) {
+    const feature = map.forEachFeatureAtPixel(event.pixel, function(feature) {
+        return feature;
+    });
+    
+    if (feature) {
+        const flight = feature.get('flight');
+        showFlightPopup(flight, event.coordinate);
+    }
+}
+
+/* Show Flight Popup */
+function showFlightPopup(flight, coordinate) {
+    // Remove existing popup
+    const existingPopup = document.querySelector('.flight-popup');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
+    
+    const popup = document.createElement('div');
+    popup.className = 'flight-popup';
+    popup.innerHTML = `
+        <div class="popup-header">
+            <h4>${flight.callsign || 'Unknown'}</h4>
+            <button onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+        <div class="popup-content">
+            <div class="popup-row">
+                <span class="label">Registration:</span>
+                <span class="value">${flight.reg || 'N/A'}</span>
+            </div>
+            <div class="popup-row">
+                <span class="label">Type:</span>
+                <span class="value">${flight.acType || 'N/A'}</span>
+            </div>
+            <div class="popup-row">
+                <span class="label">Altitude:</span>
+                <span class="value">${flight.alt_ft || 'N/A'} ft</span>
+            </div>
+            <div class="popup-row">
+                <span class="label">Speed:</span>
+                <span class="value">${flight.spd_kmh || 'N/A'} km/h</span>
+            </div>
+            <div class="popup-row">
+                <span class="label">Heading:</span>
+                <span class="value">${flight.heading || 'N/A'}°</span>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Position popup
+    const pixel = map.getPixelFromCoordinate(coordinate);
+    popup.style.left = (pixel[0] + 10) + 'px';
+    popup.style.top = (pixel[1] - popup.offsetHeight - 10) + 'px';
+}
+
+/* Center Map on Flight */
+function centerOnFlight(hex) {
+    const flight = flightData.find(f => f.hex === hex);
+    if (flight) {
+        const coordinate = ol.proj.fromLonLat([flight.lon, flight.lat]);
+        map.getView().animate({
+            center: coordinate,
+            zoom: 10,
+            duration: 1000
+        });
+    }
+}
+
+/* Show Flight Details */
+function showFlightDetails(hex) {
+    const flight = flightData.find(f => f.hex === hex);
+    if (flight) {
+        const details = Object.entries(FLIGHT_PARAMS).map(([key, label]) => {
+            const value = flight[key];
+            return `<div class="detail-row">
+                <span class="detail-label">${label}:</span>
+                <span class="detail-value">${value || 'N/A'}</span>
+            </div>`;
+        }).join('');
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Flight Details - ${flight.callsign || flight.hex}</h3>
+                    <button onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    ${details}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+}
+
+/* Filter Flights */
+function filterFlights() {
+    updateFlightList();
+}
+
+/* Search Flights */
+function searchFlights(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const flightRows = document.querySelectorAll('.flight-row');
+    
+    flightRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+    });
+}
+
+/* Refresh Flight Data */
+function refreshFlightData() {
+    updateFlightData();
+}
+
+/* Export Flight Data */
+function exportFlightData() {
+    const csv = convertToCSV(flightData);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tar24_flights_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+/* Convert to CSV */
+function convertToCSV(data) {
+    const headers = Object.values(FLIGHT_PARAMS);
+    const rows = data.map(flight => {
+        return Object.keys(FLIGHT_PARAMS).map(key => {
+            const value = flight[key];
+            return typeof value === 'string' ? `"${value}"` : value;
+        }).join(',');
+    });
+    
+    return [headers.join(','), ...rows].join('\n');
+}
+
+/* Show Error */
+function showError(message) {
+    const error = document.createElement('div');
+    error.className = 'error-message';
+    error.textContent = message;
+    document.body.appendChild(error);
+    
+    setTimeout(() => {
+        error.remove();
+    }, 5000);
+}
+
+/* App initialization is handled by OpenLayers loader */
