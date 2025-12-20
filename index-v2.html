@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>AEGIS C4ISR — Unified Command Portal (v2)</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+	<style>
+		:root{--bg:#0a0a0a;--card:#121212;--muted:#9aa0a6;--accent:#00ff41;--danger:#ff3b30;--warn:#ffaa00}
+		*{box-sizing:border-box;margin:0;padding:0}
+		html,body{height:100%}
+		body{font-family:Segoe UI,Roboto,system-ui;background:linear-gradient(160deg,#0b0f14 0%,#0a0a0a 60%);color:#fff}
+		.header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(8px);position:sticky;top:0;z-index:10}
+		.brand{display:flex;gap:10px;align-items:center;color:var(--accent);font-weight:800}
+		.brand i{font-size:22px}
+		.lang{display:flex;gap:8px}
+		.lang button{background:#181818;border:1px solid rgba(255,255,255,.06);color:#e3e3e3;padding:6px 10px;border-radius:8px;cursor:pointer}
+		.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:20px;max-width:1200px;margin:0 auto}
+		.card{background:linear-gradient(180deg,#131313,#0f0f0f);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+		.card h3{font-size:15px;color:#e5e5e5;display:flex;gap:8px;align-items:center}
+		.card p{font-size:13px;color:var(--muted);line-height:1.4}
+		.actions{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
+		.actions a{flex:1;text-align:center;text-decoration:none;background:#151515;border:1px solid rgba(255,255,255,.08);color:#fff;padding:10px;border-radius:10px;font-weight:700}
+		.actions a.primary{background:linear-gradient(180deg,#0f1,#0a0);border-color:rgba(0,255,64,.25);color:#001b04}
+		.footer{padding:16px;text-align:center;color:var(--muted);font-size:12px}
+		@media(max-width:600px){.brand span{display:none}}
+	</style>
+</head>
+<body>
+	<header class="header">
+		<div class="brand"><i class="fa-solid fa-satellite"></i><span>AEGIS C4ISR Command Portal v2</span></div>
+		<div class="lang">
+			<button data-lang="en">EN</button>
+			<button data-lang="fa">FA</button>
+			<button data-lang="sv">SV</button>
+		</div>
+	</header>
+
+	<main class="grid">
+		<div class="card">
+			<h3><i class="fa-solid fa-globe"></i> C4ISR v2 (New)</h3>
+			<p>Next-gen multi-source tracking with 2D/3D views, threat analysis, GPS ops.</p>
+			<div class="actions">
+				<a class="primary" href="./c4isr-v2.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-map"></i> Classic C4ISR</h3>
+			<p>Existing operational console with extra tools and overlays.</p>
+			<div class="actions">
+				<a href="./c4.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-plane"></i> ADS-B / MIL Tracker</h3>
+			<p>ADSB view integrated with civilian/military identification.</p>
+			<div class="actions">
+				<a href="./adsb.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-satellite-dish"></i> 3D Globe</h3>
+			<p>Three.js spherical visualization for global situational awareness.</p>
+			<div class="actions">
+				<a href="./3dmap.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-layer-group"></i> Extra Map Tools</h3>
+			<p>Advanced map overlays, analysis utilities, and experimental layers.</p>
+			<div class="actions">
+				<a href="./c4.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-brands fa-google"></i> Track in Google</h3>
+			<p>Open target coordinates in Google mapping surfaces.</p>
+			<div class="actions">
+				<a href="./gmp.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-radar"></i> TAR Console</h3>
+			<p>Target acquisition and reporting console.</p>
+			<div class="actions">
+				<a href="./tar.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-network-wired"></i> Network/Browser Tools</h3>
+			<p>Connectivity diagnostics and local browser utilities.</p>
+			<div class="actions">
+				<a href="./brz.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-vial"></i> Test Page</h3>
+			<p>Testing surface for integrations and UI widgets.</p>
+			<div class="actions">
+				<a href="./testpage.html">Open</a>
+			</div>
+		</div>
+
+		<div class="card">
+			<h3><i class="fa-solid fa-house"></i> Legacy Home</h3>
+			<p>Original entry page with language toggle and quick links.</p>
+			<div class="actions">
+				<a href="./index.html">Open</a>
+			</div>
+		</div>
+	</main>
+
+	<footer class="footer">Cinascorp © — Operational Use Only</footer>
+
+	<script>
+		const setLang=(lang)=>{
+			localStorage.setItem('site_lang',lang);
+			const q=new URLSearchParams(location.search);
+			q.set('lang',lang);
+			document.querySelectorAll('.actions a').forEach(a=>{
+				try{const u=new URL(a.getAttribute('href'),location.href);u.searchParams.set('lang',lang);a.setAttribute('href',u.pathname+u.search);}catch(e){}
+			});
+		}
+		document.querySelectorAll('.lang button').forEach(b=>b.addEventListener('click',e=>setLang(e.target.dataset.lang)));
+		setLang(new URLSearchParams(location.search).get('lang')||localStorage.getItem('site_lang')||'en');
+	</script>
+</body>
+</html>

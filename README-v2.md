@@ -1,11 +1,22 @@
 # C4ISR Military Tracking System v2.0.0
 
+🚀 **Enhanced Military-Grade Flight Tracking and Analysis Application**
+
+A comprehensive, military-grade flight tracking and analysis application designed for Command, Control, Communications, Computers, Intelligence, Surveillance, and Reconnaissance (C4ISR) operations. This system provides real-time monitoring of aircraft, UAVs, and potential threats with advanced military-grade features.
 🚀 **Overview**
 The C4ISR Military Tracking System v2.0.0 is a comprehensive, military-grade flight tracking and analysis application designed for Command, Control, Communications, Computers, Intelligence, Surveillance, and Reconnaissance operations. This enhanced version provides real-time monitoring of aircraft, UAVs, and potential threats with advanced military-grade features, improved error handling, and bug-free implementation.
 
 ## ✨ Key Features
 
 ### 🌐 Multi-Source Data Integration
+- **FlightRadar24 Integration**: Real-time commercial flight data
+- **OpenSky Network**: Comprehensive ADS-B data coverage
+- **ADSB.lol**: Military aircraft tracking and identification
+- **KiwiSDR Support**: 0-30MHz spectrum analysis for radar detection
+
+### 🗺️ Advanced Mapping & Visualization
+- **2D Map View**: High-performance Leaflet-based mapping
+- **3D Globe View**: Three.js powered spherical visualization
 - **FlightRadar24 Integration**: Real-time commercial flight data with 5-second updates
 - **OpenSky Network**: Comprehensive ADS-B data coverage with military aircraft detection
 - **ADSB.lol**: Military aircraft tracking and identification with threat assessment
@@ -19,15 +30,15 @@ The C4ISR Military Tracking System v2.0.0 is a comprehensive, military-grade fli
 - **Military Theme**: Dark, high-contrast interface optimized for operational use
 
 ### 🚨 Threat Detection & Analysis
-- **AI-Powered Threat Assessment**: Advanced machine learning algorithms for threat classification
-- **Pattern Recognition**: Automatic detection of suspicious flight patterns
+- **Automatic Threat Assessment**: AI-powered threat level evaluation
 - **Radar Evasion Detection**: Identification of stealth technology usage
 - **Military Aircraft Recognition**: Automatic classification of military vs. commercial aircraft
-- **Real-time Alerts**: Audio and visual threat notifications with configurable thresholds
+- **Pattern Analysis**: Suspicious flight pattern detection
+- **Real-time Alerts**: Audio and visual threat notifications
 
 ### 🛡️ GPS Security & Stealth Features
-- **GPS Jamming Mode**: Confuse enemy drone GPS systems with configurable power levels
-- **GPS Spoofing**: Send false coordinates to mislead tracking systems
+- **GPS Jamming Mode**: Confuse enemy drone GPS systems
+- **GPS Spoofing**: Send false coordinates to mislead tracking
 - **Stealth Mode**: Hide user location and path temporarily
 - **Emergency Override**: Quick access to normal operation
 - **Path Recovery**: Automatic restoration of user location data
@@ -42,12 +53,14 @@ The C4ISR Military Tracking System v2.0.0 is a comprehensive, military-grade fli
 - **HTTP/3 Support**: Modern protocol for enhanced performance
 - **High Scalability**: Optimized for large-scale operations
 - **Real-time Updates**: Sub-second data refresh rates
+- **Memory Management**: Efficient resource utilization
 - **Memory Management**: Efficient resource utilization with automatic cleanup
 
 ## 🏗️ System Architecture
 
 ### Core Components
 ```
+C4ISR Application
 C4ISR Application v2.0.0
 ├── Language Manager (EN/FA/SV)
 ├── Data Source Manager
@@ -55,6 +68,9 @@ C4ISR Application v2.0.0
 │   ├── OpenSky Network
 │   ├── ADSB.lol
 │   └── KiwiSDR
+├── Threat Detection System
+├── GPS Jamming System
+├── Map Controller (2D)
 ├── Threat Detection System (AI-Powered)
 ├── GPS Jamming System
 ├── Map Controller (2D/3D)
@@ -65,6 +81,7 @@ C4ISR Application v2.0.0
 ### Data Flow
 1. **Data Collection**: Multiple sources provide real-time flight data
 2. **Data Processing**: AI algorithms analyze and classify aircraft
+3. **Threat Assessment**: Automatic threat level calculation
 3. **Threat Assessment**: Automatic threat level calculation with confidence scores
 4. **Visualization**: Real-time display on 2D/3D interfaces
 5. **User Interaction**: GPS jamming, stealth mode, and filtering
@@ -83,6 +100,7 @@ C4ISR Application v2.0.0
 git clone <repository-url>
 cd c4isr-military-tracking-system
 
+# Install dependencies
 # Install dependencies (if using Node.js)
 npm install
 
@@ -123,6 +141,11 @@ c4isr-military-tracking-system/
 ### System Configuration
 The system is configured through `js/config.js` with the following key sections:
 
+- **Data Sources**: API endpoints and update intervals
+- **Map Settings**: Default center, zoom levels, and tile layers
+- **Threat Detection**: Threat level thresholds and indicators
+- **GPS Jamming**: Jamming modes and safety features
+- **Performance**: Memory limits and rendering quality
 #### Data Sources
 ```javascript
 DATA_SOURCES: {
@@ -166,6 +189,9 @@ C4ISR_CONFIG.THREAT_DETECTION.THREAT_INDICATORS.MILITARY_ACTIVITY.weight = 5;
 // Change default map center
 C4ISR_CONFIG.MAP.DEFAULT_CENTER = [40.7128, -74.0060]; // New York
 
+// Adjust performance settings
+C4ISR_CONFIG.PERFORMANCE.MAX_CONCURRENT_REQUESTS = 15;
+C4ISR_CONFIG.PERFORMANCE.MEMORY_LIMIT = 1024; // 1GB
 // Adjust GPS jamming power
 C4ISR_CONFIG.GPS_JAMMING.MODES.JAM.power = "ultra_high";
 ```
@@ -173,6 +199,7 @@ C4ISR_CONFIG.GPS_JAMMING.MODES.JAM.power = "ultra_high";
 ## 📊 Usage Guide
 
 ### Basic Operation
+1. **Launch**: Open the application in your browser
 1. **Launch**: Open `c4isr-v2.html` in your browser
 2. **Select Data Sources**: Choose which flight data sources to activate
 3. **View Flights**: Monitor real-time aircraft positions on the map
@@ -180,6 +207,18 @@ C4ISR_CONFIG.GPS_JAMMING.MODES.JAM.power = "ultra_high";
 5. **Switch Views**: Toggle between 2D map and 3D globe
 
 ### Advanced Features
+- **GPS Jamming**: Click the satellite button to activate jamming mode
+- **Stealth Mode**: Use the stealth button to hide your location
+- **Threat Monitoring**: Monitor threat levels in the header
+- **Layer Management**: Toggle satellite, terrain, and weather layers
+- **Language Switching**: Change interface language from the header
+
+### Threat Response
+- **Automatic Detection**: System automatically identifies threats
+- **Audio Alerts**: Hear threat notifications immediately
+- **Visual Indicators**: Red threat level indicators in the header
+- **Detailed Analysis**: Click on aircraft for detailed information
+- **Emergency Actions**: Quick access to GPS jamming and stealth modes
 
 #### GPS Jamming
 - Click the satellite button to activate jamming mode
@@ -270,7 +309,7 @@ C4ISR_CONFIG.GPS_JAMMING.MODES.JAM.power = "ultra_high";
 - **Coverage**: 0-30MHz spectrum analysis
 - **Update Rate**: Every 1 second
 - **Features**: Radar detection, stealth technology identification
-- **API**: Web-based spectrum analyzer
+ko- **API**: Web-based spectrum analyzer
 
 ## 🎯 Military Applications
 
@@ -348,6 +387,10 @@ C4ISR_CONFIG.GPS_JAMMING.MODES.JAM.power = "ultra_high";
 ## 🔍 Troubleshooting
 
 ### Common Issues
+- **Map Not Loading**: Check internet connection and browser compatibility
+- **No Flight Data**: Verify data source connections and API keys
+- **Performance Issues**: Reduce rendering quality or flight count
+- **Audio Not Working**: Check browser audio permissions
 
 #### Map Not Loading
 - Check internet connection
@@ -380,6 +423,7 @@ C4ISR_CONFIG.DEVELOPMENT.DEBUG_MODE = true;
 ```
 
 ### Logging
+System logs are available in the browser console and can be exported in multiple formats.
 System logs are available in the browser console and can be exported in multiple formats:
 - JSON format for analysis
 - CSV format for spreadsheet import
@@ -388,6 +432,17 @@ System logs are available in the browser console and can be exported in multiple
 ## 📚 API Reference
 
 ### Core Classes
+- `C4ISRApplication`: Main application controller
+- `LanguageManager`: Multi-language support
+- `DataSourceManager`: Data source integration
+- `ThreatDetectionSystem`: Threat analysis engine
+- `GPSJammingSystem`: GPS security features
+- `MapController`: 2D map management
+- `Globe3D`: 3D globe rendering
+- `NotificationManager`: User notification system
+
+### Event System
+The system uses a comprehensive event system for inter-component communication:
 
 #### C4ISRApplication
 Main application controller with enhanced error handling and performance monitoring.
@@ -436,6 +491,12 @@ The system uses a comprehensive event system for inter-component communication:
 - Unit test coverage
 - Performance optimization
 
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## ⚠️ Disclaimer
+
 ### Testing
 - Browser compatibility testing
 - Performance benchmarking
@@ -457,6 +518,47 @@ This system is designed for military and defense applications. Users are respons
 - **FAQ**: Common questions and answers
 
 ### Contact
+- **Email**: support@c4isr-system.com
+- **Documentation**: https://docs.c4isr-system.com
+- **Issues**: GitHub Issues page
+
+## 🔄 Version History
+
+### v2.0.0 (Current)
+- Complete rewrite with modern architecture
+- Enhanced performance and scalability
+- Improved threat detection algorithms
+- Better error handling and recovery
+- Military-grade security features
+- Multi-language support
+- Advanced visualization options
+
+### v1.0.0
+- Initial release
+- Basic flight tracking
+- Simple threat detection
+- 2D map visualization
+
+## 🎖️ Military Compliance
+
+This system is designed to meet military standards for:
+- **Security**: Encrypted communications and access control
+- **Reliability**: Redundant systems and failover capabilities
+- **Performance**: Optimized for real-time operations
+- **Compatibility**: Integration with existing military systems
+
+## 🌟 Acknowledgments
+
+- **FlightRadar24**: Commercial flight data
+- **OpenSky Network**: ADS-B data services
+- **ADSB.lol**: Military aircraft tracking
+- **KiwiSDR**: Spectrum analysis capabilities
+- **Leaflet**: 2D mapping library
+- **Three.js**: 3D graphics engine
+
+---
+
+**C4ISR Military Tracking System v2.0.0** - Empowering military operations with advanced situational awareness and threat detection capabilities.
 - **Technical Support**: For technical issues and bug reports
 - **Feature Requests**: For new feature suggestions
 - **Security Issues**: For security vulnerability reports
