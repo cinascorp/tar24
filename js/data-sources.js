@@ -332,7 +332,7 @@ class DataSourceManager {
             const response = await this.makeRequest(url, {
                 method: 'GET',
                 headers: {
-                    'User-Agent': 'C4ISR-Military-Tracker/2.0.0'
+                    'User-Agent': 'C4ISR-Military-Tracker/2.1.0'
                 }
             });
             
@@ -345,8 +345,10 @@ class DataSourceManager {
             
         } catch (error) {
             console.error('FlightRadar24 data fetch error:', error);
-            // Return sample data for demonstration
-            return this.getSampleFlightData('flightradar24');
+            if (window.C4ISR_CONFIG && window.C4ISR_CONFIG.DEVELOPMENT && window.C4ISR_CONFIG.DEVELOPMENT.MOCK_DATA) {
+                return this.getSampleFlightData('flightradar24');
+            }
+            throw error;
         }
     }
     
@@ -361,7 +363,7 @@ class DataSourceManager {
             const response = await this.makeRequest(url, {
                 method: 'GET',
                 headers: {
-                    'User-Agent': 'C4ISR-Military-Tracker/2.0.0'
+                    'User-Agent': 'C4ISR-Military-Tracker/2.1.0'
                 }
             });
             
@@ -374,8 +376,10 @@ class DataSourceManager {
             
         } catch (error) {
             console.error('OpenSky data fetch error:', error);
-            // Return sample data for demonstration
-            return this.getSampleFlightData('opensky');
+            if (window.C4ISR_CONFIG && window.C4ISR_CONFIG.DEVELOPMENT && window.C4ISR_CONFIG.DEVELOPMENT.MOCK_DATA) {
+                return this.getSampleFlightData('opensky');
+            }
+            throw error;
         }
     }
     
@@ -391,7 +395,7 @@ class DataSourceManager {
             const response = await this.makeRequest(url, {
                 method: 'GET',
                 headers: {
-                    'User-Agent': 'C4ISR-Military-Tracker/2.0.0'
+                    'User-Agent': 'C4ISR-Military-Tracker/2.1.0'
                 }
             });
             
@@ -404,8 +408,10 @@ class DataSourceManager {
             
         } catch (error) {
             console.error('ADSB.lol data fetch error:', error);
-            // Return sample data for demonstration
-            return this.getSampleFlightData('adsb');
+            if (window.C4ISR_CONFIG && window.C4ISR_CONFIG.DEVELOPMENT && window.C4ISR_CONFIG.DEVELOPMENT.MOCK_DATA) {
+                return this.getSampleFlightData('adsb');
+            }
+            throw error;
         }
     }
     

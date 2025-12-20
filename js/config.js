@@ -6,8 +6,8 @@
 const C4ISR_CONFIG = {
     // System Information
     SYSTEM_NAME: "C4ISR Military Tracking System",
-    VERSION: "2.0.0",
-    BUILD_DATE: "2024",
+    VERSION: "2.1.0",
+    BUILD_DATE: "2025",
     
     // HTTP/3 Configuration
     HTTP3: {
@@ -331,7 +331,16 @@ const C4ISR_CONFIG = {
             OPERATOR: "operator",
             ADMINISTRATOR: "administrator",
             COMMANDER: "commander"
-        }
+        },
+        
+        // Permission grading for roles (higher is more privileged)
+        PERMISSION_LEVELS: {
+            viewer: 1,
+            operator: 2,
+            administrator: 3,
+            commander: 4
+        },
+        TOP_LEVEL_ROLE: "commander"
     },
     
     // Logging Configuration

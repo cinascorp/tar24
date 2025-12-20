@@ -1,0 +1,619 @@
+/* C4ISR Military Tracking System - RTL Support */
+
+/* RTL Layout for Persian (فارسی) Language */
+[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+/* Header RTL Adjustments */
+[dir="rtl"] .command-header {
+    direction: rtl;
+}
+
+[dir="rtl"] .header-left {
+    order: 3;
+    justify-content: flex-end;
+}
+
+[dir="rtl"] .header-center {
+    order: 2;
+}
+
+[dir="rtl"] .header-right {
+    order: 1;
+    justify-content: flex-start;
+}
+
+[dir="rtl"] .app-title {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .app-title .version {
+    margin-left: 0;
+    margin-right: 0.5rem;
+}
+
+[dir="rtl"] .language-selector {
+    order: -1;
+}
+
+[dir="rtl"] .security-controls {
+    order: 1;
+}
+
+[dir="rtl"] .system-menu {
+    order: 2;
+}
+
+/* Side Panel RTL */
+[dir="rtl"] .side-panel {
+    left: -var(--panel-width);
+    right: auto;
+    border-left: none;
+    border-right: 2px solid var(--border-color);
+    box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+}
+
+[dir="rtl"] .side-panel.open {
+    left: 0;
+    right: auto;
+}
+
+[dir="rtl"] .panel-header {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .panel-close {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+/* Control Sections RTL */
+[dir="rtl"] .control-section h4 {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .control-section h4::before {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Data Source Controls RTL */
+[dir="rtl"] .source-toggle {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .source-status {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+[dir="rtl"] .toggle-slider::before {
+    left: auto;
+    right: 2px;
+}
+
+[dir="rtl"] .military-toggle input:checked + .toggle-slider::before {
+    transform: translateX(-26px);
+}
+
+/* Filter Controls RTL */
+[dir="rtl"] .filter-group label {
+    text-align: right;
+}
+
+[dir="rtl"] .range-values {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .checkbox-group label {
+    flex-direction: row-reverse;
+    text-align: right;
+}
+
+[dir="rtl"] .checkbox-group input[type="checkbox"] {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* View Toggle RTL */
+[dir="rtl"] .view-btn {
+    flex-direction: row-reverse;
+}
+
+/* Layer Controls RTL */
+[dir="rtl"] .layer-toggle {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .layer-toggle input[type="checkbox"] {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Map Controls RTL */
+[dir="rtl"] .map-controls {
+    left: 1rem;
+    right: auto;
+}
+
+/* Stats Panel RTL */
+[dir="rtl"] .stats-panel {
+    left: auto;
+    right: 1rem;
+}
+
+/* Modal RTL */
+[dir="rtl"] .modal-header {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .modal-footer {
+    flex-direction: row-reverse;
+}
+
+/* Aircraft Info RTL */
+[dir="rtl"] .info-section h4 {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .info-section h4::before {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+[dir="rtl"] .info-item {
+    text-align: right;
+}
+
+[dir="rtl"] .info-item label {
+    text-align: right;
+}
+
+/* Threat Assessment RTL */
+[dir="rtl"] .threat-level-display {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .threat-indicators {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .indicator {
+    flex-direction: row-reverse;
+}
+
+/* Button RTL */
+[dir="rtl"] .btn {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .btn i {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Notifications RTL */
+[dir="rtl"] .notifications-container {
+    left: 1rem;
+    right: auto;
+}
+
+[dir="rtl"] .notification {
+    transform: translateX(-100%);
+}
+
+[dir="rtl"] .notification.show {
+    transform: translateX(0);
+}
+
+[dir="rtl"] .notification.hide {
+    transform: translateX(-100%);
+}
+
+[dir="rtl"] .notification::before {
+    left: auto;
+    right: 0;
+}
+
+[dir="rtl"] .notification-header {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .notification-close {
+    left: 0.5rem;
+    right: auto;
+}
+
+/* Context Menu RTL */
+[dir="rtl"] .menu-item {
+    flex-direction: row-reverse;
+    text-align: right;
+}
+
+[dir="rtl"] .menu-item i {
+    margin-left: 0.75rem;
+    margin-right: 0;
+}
+
+/* Military Components RTL */
+[dir="rtl"] .military-card::before {
+    left: auto;
+    right: 0;
+}
+
+[dir="rtl"] .military-card-header {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .military-select {
+    background-position: left 0.5rem center;
+    padding-left: 2rem;
+    padding-right: 0.5rem;
+}
+
+[dir="rtl"] .military-dropdown-content {
+    left: auto;
+    right: 0;
+}
+
+[dir="rtl"] .status-indicator-group {
+    flex-direction: row-reverse;
+}
+
+/* Table RTL */
+[dir="rtl"] .military-table {
+    direction: rtl;
+}
+
+[dir="rtl"] .military-table th,
+[dir="rtl"] .military-table td {
+    text-align: right;
+}
+
+/* Tooltip RTL */
+[dir="rtl"] .military-tooltip::after {
+    left: auto;
+    right: 50%;
+    transform: translateX(50%);
+}
+
+/* Persian Font Optimization */
+[dir="rtl"] {
+    font-family: 'Tahoma', 'Arial Unicode MS', 'Lucida Grande', sans-serif;
+}
+
+[dir="rtl"] .military-logo h1,
+[dir="rtl"] .app-title,
+[dir="rtl"] .mission-status,
+[dir="rtl"] .threat-level,
+[dir="rtl"] .stat-label,
+[dir="rtl"] .notification-title,
+[dir="rtl"] .modal-header h3,
+[dir="rtl"] .panel-header h3,
+[dir="rtl"] .control-section h4,
+[dir="rtl"] .info-section h4 {
+    font-family: 'Tahoma', 'Arial Unicode MS', 'Lucida Grande', sans-serif;
+    font-weight: bold;
+}
+
+/* Persian Text Improvements */
+[dir="rtl"] .loading-text,
+[dir="rtl"] .loading-details,
+[dir="rtl"] .status-label,
+[dir="rtl"] .status-value,
+[dir="rtl"] .source-name,
+[dir="rtl"] .filter-group label,
+[dir="rtl"] .layer-toggle span,
+[dir="rtl"] .view-btn span,
+[dir="rtl"] .btn span,
+[dir="rtl"] .menu-item span,
+[dir="rtl"] .notification-message,
+[dir="rtl"] .info-item label,
+[dir="rtl"] .info-item span {
+    line-height: 1.6;
+    letter-spacing: 0;
+}
+
+/* Persian Number Support */
+[dir="rtl"] .stat-value,
+[dir="rtl"] .threat-meter,
+[dir="rtl"] .range-values,
+[dir="rtl"] .local-time,
+[dir="rtl"] .utc-time,
+[dir="rtl"] .notification-time {
+    font-family: 'Courier New', monospace;
+    direction: ltr;
+    text-align: left;
+}
+
+/* Threat Display RTL */
+[dir="rtl"] .threat-display {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .threat-meter {
+    margin-left: 0;
+    margin-right: 0.5rem;
+}
+
+/* System Clock RTL */
+[dir="rtl"] .time-display {
+    text-align: left;
+}
+
+/* Loading Screen RTL */
+[dir="rtl"] .system-status {
+    direction: rtl;
+}
+
+[dir="rtl"] .status-item {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .status-indicator {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* Form Elements RTL */
+[dir="rtl"] .military-input,
+[dir="rtl"] .military-select {
+    text-align: right;
+}
+
+[dir="rtl"] .military-input::placeholder {
+    text-align: right;
+}
+
+/* Progress Bar RTL */
+[dir="rtl"] .progress-bar {
+    direction: ltr;
+}
+
+[dir="rtl"] .military-progress {
+    direction: ltr;
+}
+
+/* Military Badge RTL */
+[dir="rtl"] .military-badge {
+    direction: ltr;
+    text-align: center;
+}
+
+/* Checkbox RTL Fixes */
+[dir="rtl"] .checkbox-label {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .checkbox-label input[type="checkbox"] {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Responsive RTL Adjustments */
+@media (max-width: 768px) {
+    [dir="rtl"] .side-panel {
+        left: -100vw;
+        right: auto;
+        width: 100vw;
+    }
+    
+    [dir="rtl"] .side-panel.open {
+        left: 0;
+    }
+    
+    [dir="rtl"] .notifications-container {
+        left: 1rem;
+        right: 1rem;
+    }
+    
+    [dir="rtl"] .map-controls {
+        left: 0.5rem;
+        right: auto;
+    }
+    
+    [dir="rtl"] .stats-panel {
+        left: auto;
+        right: auto;
+        width: 100%;
+        justify-content: space-around;
+    }
+}
+
+@media (max-width: 480px) {
+    [dir="rtl"] .header-left,
+    [dir="rtl"] .header-center,
+    [dir="rtl"] .header-right {
+        order: initial;
+    }
+    
+    [dir="rtl"] .command-header {
+        flex-direction: row-reverse;
+    }
+    
+    [dir="rtl"] .security-controls {
+        order: 1;
+    }
+    
+    [dir="rtl"] .app-title {
+        order: 2;
+    }
+    
+    [dir="rtl"] .system-menu {
+        order: 3;
+    }
+}
+
+/* Animation RTL Adjustments */
+[dir="rtl"] .military-btn::before {
+    left: auto;
+    right: -100%;
+}
+
+[dir="rtl"] .military-btn:hover::before {
+    right: 100%;
+    left: auto;
+}
+
+[dir="rtl"] .radar-screen::before {
+    animation: radarSweepRTL 4s linear infinite;
+}
+
+@keyframes radarSweepRTL {
+    0% { transform: rotate(0deg) scaleX(-1); }
+    100% { transform: rotate(360deg) scaleX(-1); }
+}
+
+/* Glitch Effect RTL */
+[dir="rtl"] .glitch-effect::before,
+[dir="rtl"] .glitch-effect::after {
+    left: auto;
+    right: 0;
+}
+
+/* Persian Typography Enhancements */
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+    font-family: 'Tahoma', 'Arial Unicode MS', sans-serif;
+    font-weight: bold;
+}
+
+[dir="rtl"] p, [dir="rtl"] span, [dir="rtl"] div {
+    font-family: 'Tahoma', 'Arial Unicode MS', sans-serif;
+}
+
+/* Code and Numbers Always LTR */
+[dir="rtl"] code,
+[dir="rtl"] .aircraft-icao,
+[dir="rtl"] .aircraft-registration,
+[dir="rtl"] .aircraft-latitude,
+[dir="rtl"] .aircraft-longitude,
+[dir="rtl"] .aircraft-altitude,
+[dir="rtl"] .aircraft-speed,
+[dir="rtl"] .aircraft-heading,
+[dir="rtl"] .aircraft-vertical-speed {
+    direction: ltr;
+    text-align: left;
+    font-family: 'Courier New', monospace;
+}
+
+/* Persian Punctuation */
+[dir="rtl"] .info-item label::after {
+    content: ":" !important;
+}
+
+/* High Contrast RTL */
+@media (prefers-contrast: high) {
+    [dir="rtl"] .military-card::before {
+        left: auto;
+        right: 0;
+    }
+    
+    [dir="rtl"] .control-section h4::before,
+    [dir="rtl"] .info-section h4::before {
+        margin-left: 0.5rem;
+        margin-right: 0;
+    }
+}
+
+/* Print RTL */
+@media print {
+    [dir="rtl"] .map-container::after {
+        left: 10px;
+        right: auto;
+        direction: ltr;
+    }
+}
+
+/* Accessibility RTL */
+[dir="rtl"] button:focus,
+[dir="rtl"] input:focus,
+[dir="rtl"] select:focus {
+    outline-offset: 2px;
+}
+
+/* RTL Icon Adjustments */
+[dir="rtl"] .fa-chevron-left::before {
+    content: "\f054"; /* chevron-right */
+}
+
+[dir="rtl"] .fa-chevron-right::before {
+    content: "\f053"; /* chevron-left */
+}
+
+[dir="rtl"] .fa-arrow-left::before {
+    content: "\f061"; /* arrow-right */
+}
+
+[dir="rtl"] .fa-arrow-right::before {
+    content: "\f060"; /* arrow-left */
+}
+
+/* Persian Language Specific Adjustments */
+[lang="fa"] {
+    font-size: 1.1em; /* Slightly larger for better Persian readability */
+}
+
+[lang="fa"] .military-logo h1 {
+    letter-spacing: 2px; /* Reduced letter spacing for Persian */
+}
+
+[lang="fa"] .app-title .title {
+    letter-spacing: 1px;
+}
+
+[lang="fa"] .control-section h4,
+[lang="fa"] .info-section h4,
+[lang="fa"] .panel-header h3,
+[lang="fa"] .modal-header h3 {
+    letter-spacing: 1px;
+}
+
+[lang="fa"] .stat-label,
+[lang="fa"] .notification-title,
+[lang="fa"] .military-badge {
+    letter-spacing: 0.5px;
+}
+
+/* Mixed Content (Persian + English) */
+[dir="rtl"] .mixed-content {
+    direction: rtl;
+    text-align: right;
+}
+
+[dir="rtl"] .mixed-content .ltr {
+    direction: ltr;
+    display: inline-block;
+    text-align: left;
+}
+
+/* Ensure proper spacing for Persian text */
+[lang="fa"] .loading-text,
+[lang="fa"] .loading-details,
+[lang="fa"] .notification-message {
+    line-height: 1.8;
+    word-spacing: 0.2em;
+}
+
+/* Persian keyboard support indicators */
+[dir="rtl"] .keyboard-indicator {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: auto;
+    background: rgba(0, 255, 0, 0.1);
+    border: 1px solid var(--accent-green);
+    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-xs);
+    border-radius: var(--border-radius);
+}
+
+/* Performance optimization for RTL */
+[dir="rtl"] .large-text-content {
+    text-rendering: optimizeSpeed;
+}
+
+[dir="rtl"] .small-text-content {
+    text-rendering: optimizeLegibility;
+}

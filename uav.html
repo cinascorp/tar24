@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UAV - Unmanned Aerial Vehicle Tracking</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        .info-window {
+            font-family: Arial, sans-serif;
+            padding: 15px;
+            max-width: 400px;
+            background: #2a2a2a;
+            color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .uav-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(42, 42, 42, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #4a4a4a;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #cccccc;
+        }
+        .control-group select, .control-group input {
+            width: 150px;
+            padding: 5px;
+            background: #3a3a3a;
+            border: 1px solid #5a5a5a;
+            color: #ffffff;
+            border-radius: 4px;
+        }
+        .uav-legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(42, 42, 42, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #4a4a4a;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .legend-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .drone-icon {
+            background: #ff6b6b;
+            color: white;
+        }
+        .uav-icon {
+            background: #4ecdc4;
+            color: white;
+        }
+        .military-icon {
+            background: #ff9ff3;
+            color: white;
+        }
+        .commercial-icon {
+            background: #95e1d3;
+            color: white;
+        }
+        .stats-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(42, 42, 42, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #4a4a4a;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            min-width: 200px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .stat-value {
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+        .threat-level {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .threat-low {
+            background: #2ecc71;
+            color: white;
+        }
+        .threat-medium {
+            background: #f39c12;
+            color: white;
+        }
+        .threat-high {
+            background: #e74c3c;
+            color: white;
+        }
+        .advanced-marker {
+            position: relative;
+            display: inline-block;
+        }
+        .marker-pulse {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            pointer-events: none;
+        }
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+            }
+        }
+        .flight-path {
+            stroke-dasharray: 5,5;
+            animation: dash 1s linear infinite;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- UAV Controls -->
+    <div class="uav-controls">
+        <h3 style="margin-top: 0; color: #4ecdc4;">UAV Control Panel</h3>
+        <div class="control-group">
+            <label>Detection Range</label>
+            <select id="detectionRange">
+                <option value="local">Local Area (50km)</option>
+                <option value="regional">Regional (200km)</option>
+                <option value="national" selected>National (500km)</option>
+                <option value="global">Global Coverage</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>UAV Type Filter</label>
+            <select id="uavTypeFilter">
+                <option value="all" selected>All UAVs</option>
+                <option value="drone">Small Drones</option>
+                <option value="military">Military UAVs</option>
+                <option value="commercial">Commercial UAVs</option>
+                <option value="unknown">Unknown Types</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Altitude Filter (ft)</label>
+            <input type="range" id="altitudeFilter" min="0" max="10000" value="10000" step="100">
+            <span id="altitudeValue">10,000 ft</span>
+        </div>
+        <div class="control-group">
+            <label>Threat Assessment</label>
+            <select id="threatFilter">
+                <option value="all" selected>All Levels</option>
+                <option value="low">Low Threat</option>
+                <option value="medium">Medium Threat</option>
+                <option value="high">High Threat</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="uav-legend">
+        <h4 style="margin-top: 0; color: #4ecdc4;">UAV Legend</h4>
+        <div class="legend-item">
+            <div class="legend-icon drone-icon">D</div>
+            <span>Small Drones</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon uav-icon">U</div>
+            <span>Medium UAVs</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon military-icon">M</div>
+            <span>Military UAVs</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon commercial-icon">C</div>
+            <span>Commercial UAVs</span>
+        </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div class="stats-panel">
+        <h4 style="margin-top: 0; color: #4ecdc4;">UAV Statistics</h4>
+        <div class="stat-item">
+            <span>Total UAVs:</span>
+            <span class="stat-value" id="totalUAVs">0</span>
+        </div>
+        <div class="stat-item">
+            <span>Active Drones:</span>
+            <span class="stat-value" id="activeDrones">0</span>
+        </div>
+        <div class="stat-item">
+            <span>Military UAVs:</span>
+            <span class="stat-value" id="militaryUAVs">0</span>
+        </div>
+        <div class="stat-item">
+            <span>Unknown Objects:</span>
+            <span class="stat-value" id="unknownObjects">0</span>
+        </div>
+        <div class="threat-level" id="overallThreat">
+            THREAT LEVEL: LOW
+        </div>
+    </div>
+
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8&callback=initMap"></script>
+    <script>
+        let map;
+        let markers = [];
+        let flightPaths = [];
+        let uavData = [];
+
+        // Advanced marker creation for UAVs and drones
+        async function createAdvancedUAVMarker(type, position, data, size = 32) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const canvasSize = size * 1.5;
+                canvas.width = canvasSize;
+                canvas.height = canvasSize;
+                const ctx = canvas.getContext('2d');
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+                // Set colors and shapes based on UAV type
+                let color, shape, symbol;
+                switch(type) {
+                    case 'drone':
+                        color = '#ff6b6b';
+                        shape = 'circle';
+                        symbol = 'D';
+                        break;
+                    case 'military':
+                        color = '#ff9ff3';
+                        shape = 'diamond';
+                        symbol = 'M';
+                        break;
+                    case 'commercial':
+                        color = '#95e1d3';
+                        shape = 'square';
+                        symbol = 'C';
+                        break;
+                    default:
+                        color = '#4ecdc4';
+                        shape = 'triangle';
+                        symbol = 'U';
+                }
+
+                // Draw advanced marker with 3D effect
+                const centerX = canvasSize / 2;
+                const centerY = canvasSize / 2;
+                const radius = size / 2;
+
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                if (shape === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(centerX + 2, centerY + 2, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else if (shape === 'square') {
+                    ctx.fillRect(centerX - radius + 2, centerY - radius + 2, size, size);
+                } else if (shape === 'diamond') {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 2, centerY - radius + 2);
+                    ctx.lineTo(centerX + radius + 2, centerY + 2);
+                    ctx.lineTo(centerX + 2, centerY + radius + 2);
+                    ctx.lineTo(centerX - radius + 2, centerY + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (shape === 'triangle') {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 2, centerY - radius + 2);
+                    ctx.lineTo(centerX + radius + 2, centerY + radius + 2);
+                    ctx.lineTo(centerX - radius + 2, centerY + radius + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Draw main shape with gradient
+                const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+                gradient.addColorStop(0, color);
+                gradient.addColorStop(1, darkenColor(color, 0.3));
+                ctx.fillStyle = gradient;
+
+                if (shape === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else if (shape === 'square') {
+                    ctx.fillRect(centerX - radius, centerY - radius, size, size);
+                } else if (shape === 'diamond') {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY - radius);
+                    ctx.lineTo(centerX + radius, centerY);
+                    ctx.lineTo(centerX, centerY + radius);
+                    ctx.lineTo(centerX - radius, centerY);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (shape === 'triangle') {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY - radius);
+                    ctx.lineTo(centerX + radius, centerY + radius);
+                    ctx.lineTo(centerX - radius, centerY + radius);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Draw border
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Add symbol
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${size * 0.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(symbol, centerX, centerY);
+
+                // Add threat indicator if high threat
+                if (data.threatLevel === 'high') {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius + 5, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                resolve(canvas.toDataURL());
+            });
+        }
+
+        function darkenColor(color, factor) {
+            const hex = color.replace('#', '');
+            const r = Math.floor(parseInt(hex.substr(0, 2), 16) * (1 - factor));
+            const g = Math.floor(parseInt(hex.substr(2, 2), 16) * (1 - factor));
+            const b = Math.floor(parseInt(hex.substr(4, 2), 16) * (1 - factor));
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        function initMap() {
+            // Initialize Google Map with dark theme
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 35.693, lng: 51.330 },
+                zoom: 6,
+                styles: [
+                    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                    {
+                        featureType: "administrative.locality",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#d59563" }]
+                    },
+                    {
+                        featureType: "poi",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#d59563" }]
+                    },
+                    {
+                        featureType: "poi.park",
+                        elementType: "geometry",
+                        stylers: [{ color: "#263c3f" }]
+                    },
+                    {
+                        featureType: "poi.park",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#6b9a76" }]
+                    },
+                    {
+                        featureType: "road",
+                        elementType: "geometry",
+                        stylers: [{ color: "#38414e" }]
+                    },
+                    {
+                        featureType: "road",
+                        elementType: "geometry.stroke",
+                        stylers: [{ color: "#212a37" }]
+                    },
+                    {
+                        featureType: "road",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#9ca5b3" }]
+                    },
+                    {
+                        featureType: "road.highway",
+                        elementType: "geometry",
+                        stylers: [{ color: "#746855" }]
+                    },
+                    {
+                        featureType: "road.highway",
+                        elementType: "geometry.stroke",
+                        stylers: [{ color: "#1f2835" }]
+                    },
+                    {
+                        featureType: "road.highway",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#f3d19c" }]
+                    },
+                    {
+                        featureType: "transit",
+                        elementType: "geometry",
+                        stylers: [{ color: "#2f3948" }]
+                    },
+                    {
+                        featureType: "transit.station",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#d59563" }]
+                    },
+                    {
+                        featureType: "water",
+                        elementType: "geometry",
+                        stylers: [{ color: "#17263c" }]
+                    },
+                    {
+                        featureType: "water",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#515c6d" }]
+                    },
+                    {
+                        featureType: "water",
+                        elementType: "labels.text.stroke",
+                        stylers: [{ color: "#17263c" }]
+                    }
+                ]
+            });
+
+            // Fetch and display UAV data
+            updateUAVDisplay();
+
+            // Set up automatic updates
+            setInterval(updateUAVDisplay, 10000);
+
+            // Set up control listeners
+            setupControlListeners();
+        }
+
+        async function fetchFlightData() {
+            try {
+                // Use multiple endpoints for better UAV detection
+                const endpoints = [
+                    'https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds=60,20,20,80&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1',
+                    'https://opensky-network.org/api/states/all?lamin=20&lomin=20&lamax=60&lomax=80'
+                ];
+
+                let allData = {};
+                
+                // Try FlightRadar24 first
+                try {
+                    const response = await fetch(endpoints[0]);
+                    const text = await response.text();
+                    const jsonStart = text.indexOf('{');
+                    if (jsonStart !== -1) {
+                        allData = JSON.parse(text.substring(jsonStart));
+                    }
+                } catch (error) {
+                    console.warn('FlightRadar24 API error:', error);
+                }
+
+                // Filter for UAVs and drones
+                const uavFlights = [];
+                for (const [flightId, flight] of Object.entries(allData)) {
+                    if (flightId === 'full_count' || flightId === 'version' || !Array.isArray(flight)) continue;
+                    
+                    if (flight.length >= 18) {
+                        const [
+                            icao, lat, lng, heading, altitude, speed, squawk, radar,
+                            aircraftType, registration, timestamp, origin, destination,
+                            flightNumber, isGround, verticalSpeed, callsign, unknown, airline
+                        ] = flight;
+
+                        if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
+
+                        const uavType = classifyUAV(aircraftType, callsign, altitude, speed);
+                        if (uavType) {
+                            uavFlights.push({
+                                id: flightId,
+                                type: uavType,
+                                lat: parseFloat(lat),
+                                lng: parseFloat(lng),
+                                heading: parseInt(heading) || 0,
+                                altitude: parseInt(altitude) || 0,
+                                speed: parseInt(speed) || 0,
+                                aircraftType: aircraftType || 'Unknown',
+                                callsign: callsign || flightNumber || 'Unknown',
+                                registration: registration || '',
+                                threatLevel: assessThreat(uavType, altitude, speed, callsign)
+                            });
+                        }
+                    }
+                }
+
+                return uavFlights;
+            } catch (error) {
+                console.error('Error fetching flight data:', error);
+                return [];
+            }
+        }
+
+        function classifyUAV(aircraftType, callsign, altitude, speed) {
+            if (!aircraftType && !callsign) return null;
+            
+            const type = (aircraftType || '').toUpperCase();
+            const call = (callsign || '').toUpperCase();
+            const alt = parseInt(altitude) || 0;
+            const spd = parseInt(speed) || 0;
+
+            // Military UAV indicators
+            if (call.includes('MILITARY') || call.includes('ARMY') || call.includes('NAVY') || 
+                call.includes('USAF') || call.includes('RAF') || type.includes('PREDATOR') ||
+                type.includes('REAPER') || type.includes('GLOBAL') || call.includes('DRONE')) {
+                return 'military';
+            }
+
+            // Commercial UAV indicators
+            if (type.includes('COMMERCIAL') || call.includes('DELIVERY') || 
+                call.includes('SURVEY') || type.includes('CARGO') && alt < 1000) {
+                return 'commercial';
+            }
+
+            // Small drone indicators (low altitude, low speed)
+            if (alt > 0 && alt < 500 && spd >= 0 && spd < 100) {
+                return 'drone';
+            }
+
+            // Medium UAV indicators
+            if (alt > 0 && alt < 2000 && spd >= 0 && spd < 200) {
+                return 'uav';
+            }
+
+            return null;
+        }
+
+        function assessThreat(type, altitude, speed, callsign) {
+            // Military UAVs are always high threat
+            if (type === 'military') return 'high';
+            
+            // High speed or altitude UAVs
+            if (altitude > 1000 || speed > 150) return 'medium';
+            
+            // Unknown or unregistered drones near sensitive areas
+            if (!callsign || callsign === 'Unknown') return 'medium';
+            
+            // Commercial and known drones are low threat
+            return 'low';
+        }
+
+        async function updateUAVDisplay() {
+            const uavFlights = await fetchFlightData();
+            uavData = uavFlights;
+
+            // Clear existing markers and paths
+            markers.forEach(marker => marker.setMap(null));
+            flightPaths.forEach(path => path.setMap(null));
+            markers = [];
+            flightPaths = [];
+
+            // Apply filters
+            const filteredUAVs = applyFilters(uavFlights);
+
+            // Create advanced markers for each UAV
+            for (const uav of filteredUAVs) {
+                const markerIcon = await createAdvancedUAVMarker(uav.type, { lat: uav.lat, lng: uav.lng }, uav, 32);
+                
+                const marker = new google.maps.Marker({
+                    position: { lat: uav.lat, lng: uav.lng },
+                    map: map,
+                    icon: {
+                        url: markerIcon,
+                        scaledSize: new google.maps.Size(48, 48),
+                        anchor: new google.maps.Point(24, 24)
+                    },
+                    title: uav.callsign,
+                    zIndex: uav.threatLevel === 'high' ? 1000 : 100
+                });
+
+                // Create enhanced info window
+                const infoWindow = new google.maps.InfoWindow({
+                    content: createUAVInfoWindow(uav)
+                });
+
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                });
+
+                markers.push(marker);
+
+                // Add flight path prediction for military UAVs
+                if (uav.type === 'military' && uav.heading) {
+                    createFlightPath(uav);
+                }
+            }
+
+            // Update statistics
+            updateStatistics(filteredUAVs);
+        }
+
+        function createUAVInfoWindow(uav) {
+            return `
+                <div class="info-window">
+                    <h3 style="color: #4ecdc4; margin-top: 0;">UAV Details</h3>
+                    <p><strong>Callsign:</strong> ${uav.callsign}</p>
+                    <p><strong>Type:</strong> ${uav.type.toUpperCase()}</p>
+                    <p><strong>Aircraft:</strong> ${uav.aircraftType}</p>
+                    <p><strong>Registration:</strong> ${uav.registration || 'Unknown'}</p>
+                    <p><strong>Position:</strong> ${uav.lat.toFixed(4)}, ${uav.lng.toFixed(4)}</p>
+                    <p><strong>Altitude:</strong> ${uav.altitude} ft</p>
+                    <p><strong>Speed:</strong> ${uav.speed} knots</p>
+                    <p><strong>Heading:</strong> ${uav.heading}°</p>
+                    <p><strong>Threat Level:</strong> <span style="color: ${getThreatColor(uav.threatLevel)}; font-weight: bold;">${uav.threatLevel.toUpperCase()}</span></p>
+                    <hr style="border-color: #4a4a4a;">
+                    <p style="font-size: 12px; color: #cccccc;">
+                        <strong>Operational Notes:</strong><br>
+                        ${getOperationalNotes(uav)}
+                    </p>
+                </div>
+            `;
+        }
+
+        function getThreatColor(threatLevel) {
+            switch(threatLevel) {
+                case 'high': return '#e74c3c';
+                case 'medium': return '#f39c12';
+                case 'low': return '#2ecc71';
+                default: return '#cccccc';
+            }
+        }
+
+        function getOperationalNotes(uav) {
+            switch(uav.type) {
+                case 'military':
+                    return 'Military UAV detected. Maintain safe distance. Monitor for changes in flight pattern.';
+                case 'commercial':
+                    return 'Commercial UAV operation. Likely conducting surveys, deliveries, or inspections.';
+                case 'drone':
+                    return 'Small drone detected. Possible recreational or commercial use. Monitor for compliance.';
+                default:
+                    return 'Unknown UAV type. Continue monitoring and attempt classification.';
+            }
+        }
+
+        function createFlightPath(uav) {
+            const startPos = { lat: uav.lat, lng: uav.lng };
+            const heading = (uav.heading || 0) * Math.PI / 180;
+            const distance = 0.1; // degrees
+            
+            const endPos = {
+                lat: startPos.lat + distance * Math.cos(heading),
+                lng: startPos.lng + distance * Math.sin(heading)
+            };
+
+            const flightPath = new google.maps.Polyline({
+                path: [startPos, endPos],
+                geodesic: true,
+                strokeColor: getThreatColor(uav.threatLevel),
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+                icons: [{
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 4,
+                        fillColor: getThreatColor(uav.threatLevel),
+                        fillOpacity: 1,
+                        strokeWeight: 1,
+                        strokeColor: '#ffffff'
+                    },
+                    offset: '100%'
+                }]
+            });
+
+            flightPath.setMap(map);
+            flightPaths.push(flightPath);
+        }
+
+        function applyFilters(uavs) {
+            const typeFilter = document.getElementById('uavTypeFilter').value;
+            const altitudeFilter = parseInt(document.getElementById('altitudeFilter').value);
+            const threatFilter = document.getElementById('threatFilter').value;
+
+            return uavs.filter(uav => {
+                if (typeFilter !== 'all' && uav.type !== typeFilter) return false;
+                if (uav.altitude > altitudeFilter) return false;
+                if (threatFilter !== 'all' && uav.threatLevel !== threatFilter) return false;
+                return true;
+            });
+        }
+
+        function updateStatistics(uavs) {
+            const stats = {
+                total: uavs.length,
+                drones: uavs.filter(u => u.type === 'drone').length,
+                military: uavs.filter(u => u.type === 'military').length,
+                unknown: uavs.filter(u => u.type === 'uav').length
+            };
+
+            document.getElementById('totalUAVs').textContent = stats.total;
+            document.getElementById('activeDrones').textContent = stats.drones;
+            document.getElementById('militaryUAVs').textContent = stats.military;
+            document.getElementById('unknownObjects').textContent = stats.unknown;
+
+            // Update overall threat level
+            const threatElement = document.getElementById('overallThreat');
+            const highThreatCount = uavs.filter(u => u.threatLevel === 'high').length;
+            const mediumThreatCount = uavs.filter(u => u.threatLevel === 'medium').length;
+
+            if (highThreatCount > 0) {
+                threatElement.textContent = 'THREAT LEVEL: HIGH';
+                threatElement.className = 'threat-level threat-high';
+            } else if (mediumThreatCount > 0) {
+                threatElement.textContent = 'THREAT LEVEL: MEDIUM';
+                threatElement.className = 'threat-level threat-medium';
+            } else {
+                threatElement.textContent = 'THREAT LEVEL: LOW';
+                threatElement.className = 'threat-level threat-low';
+            }
+        }
+
+        function setupControlListeners() {
+            // Detection range
+            document.getElementById('detectionRange').addEventListener('change', updateUAVDisplay);
+            
+            // UAV type filter
+            document.getElementById('uavTypeFilter').addEventListener('change', updateUAVDisplay);
+            
+            // Altitude filter
+            const altitudeFilter = document.getElementById('altitudeFilter');
+            const altitudeValue = document.getElementById('altitudeValue');
+            
+            altitudeFilter.addEventListener('input', function() {
+                altitudeValue.textContent = parseInt(this.value).toLocaleString() + ' ft';
+                updateUAVDisplay();
+            });
+            
+            // Threat filter
+            document.getElementById('threatFilter').addEventListener('change', updateUAVDisplay);
+        }
+    </script>
+</body>
+</html>

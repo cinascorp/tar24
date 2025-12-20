@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="military">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4ISR Military Tracking System v2.0.0</title>
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: wss:;">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Core Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/military-theme.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/responsive.css">
+    
+    <!-- Language Styles -->
+    <link rel="stylesheet" href="styles/rtl.css" id="rtl-styles" disabled>
+</head>
+<body class="military-theme" data-loading="true">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="military-logo">
+                <i class="fas fa-satellite-dish"></i>
+                <h1>C4ISR</h1>
+                <span class="version">v2.0.0</span>
+            </div>
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="loading-text">Initializing Command & Control Systems...</div>
+                <div class="loading-details">Loading threat detection algorithms</div>
+            </div>
+            <div class="system-status">
+                <div class="status-item" data-system="data-sources">
+                    <i class="fas fa-database"></i>
+                    <span>Data Sources</span>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="status-item" data-system="threat-detection">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Threat Detection</span>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="status-item" data-system="gps-security">
+                    <i class="fas fa-satellite"></i>
+                    <span>GPS Security</span>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="status-item" data-system="communications">
+                    <i class="fas fa-broadcast-tower"></i>
+                    <span>Communications</span>
+                    <div class="status-indicator"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" class="app-container">
+        <!-- Header / Command Bar -->
+        <header class="command-header">
+            <div class="header-left">
+                <div class="app-title">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span class="title">C4ISR Military Tracking</span>
+                    <span class="version">v2.0.0</span>
+                </div>
+                <div class="mission-status">
+                    <span class="status-label" data-i18n="mission.status">Mission Status:</span>
+                    <span class="status-value active" data-i18n="mission.operational">OPERATIONAL</span>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <div class="threat-level-indicator">
+                    <div class="threat-display">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span class="threat-level" data-i18n="threat.level.low">LOW</span>
+                        <div class="threat-meter">
+                            <div class="threat-fill"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="system-clock">
+                    <div class="time-display">
+                        <span class="local-time"></span>
+                        <span class="utc-time"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="language-selector">
+                    <button class="lang-btn" data-lang="en">EN</button>
+                    <button class="lang-btn" data-lang="fa">فا</button>
+                    <button class="lang-btn" data-lang="sv">SV</button>
+                </div>
+                
+                <div class="security-controls">
+                    <button class="security-btn gps-jamming" data-mode="jamming" title="GPS Jamming">
+                        <i class="fas fa-satellite"></i>
+                    </button>
+                    <button class="security-btn stealth-mode" data-mode="stealth" title="Stealth Mode">
+                        <i class="fas fa-user-secret"></i>
+                    </button>
+                    <button class="security-btn emergency-override" data-mode="emergency" title="Emergency Override">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </button>
+                </div>
+                
+                <div class="system-menu">
+                    <button class="menu-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Side Panel -->
+        <aside class="side-panel" id="side-panel">
+            <div class="panel-header">
+                <h3 data-i18n="panel.control">Control Panel</h3>
+                <button class="panel-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="panel-content">
+                <!-- Data Sources -->
+                <div class="control-section">
+                    <h4 data-i18n="panel.data_sources">Data Sources</h4>
+                    <div class="data-source-controls">
+                        <label class="source-toggle">
+                            <input type="checkbox" id="source-flightradar24" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="source-name">FlightRadar24</span>
+                            <span class="source-status online"></span>
+                        </label>
+                        <label class="source-toggle">
+                            <input type="checkbox" id="source-opensky" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="source-name">OpenSky Network</span>
+                            <span class="source-status online"></span>
+                        </label>
+                        <label class="source-toggle">
+                            <input type="checkbox" id="source-adsb">
+                            <span class="toggle-slider"></span>
+                            <span class="source-name">ADSB.lol</span>
+                            <span class="source-status offline"></span>
+                        </label>
+                        <label class="source-toggle">
+                            <input type="checkbox" id="source-kiwisdr">
+                            <span class="toggle-slider"></span>
+                            <span class="source-name">KiwiSDR</span>
+                            <span class="source-status offline"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="control-section">
+                    <h4 data-i18n="panel.filters">Filters</h4>
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label data-i18n="filter.altitude">Altitude Range (ft)</label>
+                            <div class="range-slider">
+                                <input type="range" id="altitude-min" min="0" max="50000" value="0">
+                                <input type="range" id="altitude-max" min="0" max="50000" value="50000">
+                                <div class="range-values">
+                                    <span id="altitude-min-value">0</span> - <span id="altitude-max-value">50,000</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label data-i18n="filter.speed">Speed Range (knots)</label>
+                            <div class="range-slider">
+                                <input type="range" id="speed-min" min="0" max="1000" value="0">
+                                <input type="range" id="speed-max" min="0" max="1000" value="1000">
+                                <div class="range-values">
+                                    <span id="speed-min-value">0</span> - <span id="speed-max-value">1,000</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label data-i18n="filter.aircraft_type">Aircraft Type</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" value="commercial" checked> <span data-i18n="aircraft.commercial">Commercial</span></label>
+                                <label><input type="checkbox" value="military" checked> <span data-i18n="aircraft.military">Military</span></label>
+                                <label><input type="checkbox" value="private" checked> <span data-i18n="aircraft.private">Private</span></label>
+                                <label><input type="checkbox" value="cargo" checked> <span data-i18n="aircraft.cargo">Cargo</span></label>
+                                <label><input type="checkbox" value="unknown" checked> <span data-i18n="aircraft.unknown">Unknown</span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Threat Settings -->
+                <div class="control-section">
+                    <h4 data-i18n="panel.threat_settings">Threat Settings</h4>
+                    <div class="threat-controls">
+                        <div class="threat-sensitivity">
+                            <label data-i18n="threat.sensitivity">Threat Sensitivity</label>
+                            <select id="threat-sensitivity">
+                                <option value="low" data-i18n="threat.sensitivity.low">Low</option>
+                                <option value="medium" selected data-i18n="threat.sensitivity.medium">Medium</option>
+                                <option value="high" data-i18n="threat.sensitivity.high">High</option>
+                                <option value="maximum" data-i18n="threat.sensitivity.maximum">Maximum</option>
+                            </select>
+                        </div>
+                        
+                        <div class="alert-settings">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="audio-alerts" checked>
+                                <span data-i18n="alerts.audio">Audio Alerts</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="visual-alerts" checked>
+                                <span data-i18n="alerts.visual">Visual Alerts</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="popup-alerts">
+                                <span data-i18n="alerts.popup">Popup Alerts</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Settings -->
+                <div class="control-section">
+                    <h4 data-i18n="panel.map_settings">Map Settings</h4>
+                    <div class="map-controls">
+                        <div class="view-toggle">
+                            <button class="view-btn active" data-view="2d">
+                                <i class="fas fa-map"></i>
+                                <span data-i18n="view.2d">2D Map</span>
+                            </button>
+                            <button class="view-btn" data-view="3d">
+                                <i class="fas fa-globe"></i>
+                                <span data-i18n="view.3d">3D Globe</span>
+                            </button>
+                        </div>
+                        
+                        <div class="layer-controls">
+                            <h5 data-i18n="map.layers">Map Layers</h5>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-satellite" checked>
+                                <span data-i18n="layer.satellite">Satellite</span>
+                            </label>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-terrain">
+                                <span data-i18n="layer.terrain">Terrain</span>
+                            </label>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-weather">
+                                <span data-i18n="layer.weather">Weather</span>
+                            </label>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-airspace">
+                                <span data-i18n="layer.airspace">Airspace</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Map Container -->
+            <div class="map-container">
+                <div id="map-2d" class="map-view active"></div>
+                <div id="map-3d" class="map-view"></div>
+                
+                <!-- Map Controls -->
+                <div class="map-controls">
+                    <div class="control-group location-controls">
+                        <button class="control-btn" id="find-location" title="Find My Location">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                        <button class="control-btn" id="reset-view" title="Reset View">
+                            <i class="fas fa-home"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="control-group zoom-controls">
+                        <button class="control-btn" id="zoom-in" title="Zoom In">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="control-btn" id="zoom-out" title="Zoom Out">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="control-group view-controls">
+                        <button class="control-btn" id="fullscreen" title="Fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button class="control-btn" id="screenshot" title="Screenshot">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats Panel -->
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-aircraft">0</div>
+                    <div class="stat-label" data-i18n="stats.total_aircraft">Total Aircraft</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="military-aircraft">0</div>
+                    <div class="stat-label" data-i18n="stats.military_aircraft">Military</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="threats-detected">0</div>
+                    <div class="stat-label" data-i18n="stats.threats_detected">Threats</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="data-rate">0/s</div>
+                    <div class="stat-label" data-i18n="stats.data_rate">Updates/sec</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Aircraft Details Modal -->
+    <div id="aircraft-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="modal.aircraft_details">Aircraft Details</h3>
+                <button class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="aircraft-info">
+                    <div class="info-section">
+                        <h4 data-i18n="info.identification">Identification</h4>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label data-i18n="info.callsign">Callsign:</label>
+                                <span id="aircraft-callsign">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.icao">ICAO:</label>
+                                <span id="aircraft-icao">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.registration">Registration:</label>
+                                <span id="aircraft-registration">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.aircraft_type">Type:</label>
+                                <span id="aircraft-type">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h4 data-i18n="info.position">Position & Navigation</h4>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label data-i18n="info.latitude">Latitude:</label>
+                                <span id="aircraft-latitude">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.longitude">Longitude:</label>
+                                <span id="aircraft-longitude">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.altitude">Altitude:</label>
+                                <span id="aircraft-altitude">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.speed">Speed:</label>
+                                <span id="aircraft-speed">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.heading">Heading:</label>
+                                <span id="aircraft-heading">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label data-i18n="info.vertical_speed">Vertical Speed:</label>
+                                <span id="aircraft-vertical-speed">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h4 data-i18n="info.threat_assessment">Threat Assessment</h4>
+                        <div class="threat-assessment">
+                            <div class="threat-level-display">
+                                <span class="threat-badge" id="aircraft-threat-level">LOW</span>
+                                <div class="threat-indicators">
+                                    <div class="indicator" data-indicator="military">
+                                        <i class="fas fa-fighter-jet"></i>
+                                        <span data-i18n="indicator.military">Military</span>
+                                    </div>
+                                    <div class="indicator" data-indicator="stealth">
+                                        <i class="fas fa-eye-slash"></i>
+                                        <span data-i18n="indicator.stealth">Stealth</span>
+                                    </div>
+                                    <div class="indicator" data-indicator="unusual">
+                                        <i class="fas fa-exclamation"></i>
+                                        <span data-i18n="indicator.unusual">Unusual</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-action="track">
+                    <i class="fas fa-crosshairs"></i>
+                    <span data-i18n="action.track">Track Aircraft</span>
+                </button>
+                <button class="btn btn-primary" data-action="analyze">
+                    <i class="fas fa-chart-line"></i>
+                    <span data-i18n="action.analyze">Analyze Threat</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification System -->
+    <div id="notifications" class="notifications-container"></div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu">
+        <div class="menu-item" data-action="center-here">
+            <i class="fas fa-crosshairs"></i>
+            <span data-i18n="menu.center_here">Center Here</span>
+        </div>
+        <div class="menu-item" data-action="measure-distance">
+            <i class="fas fa-ruler"></i>
+            <span data-i18n="menu.measure_distance">Measure Distance</span>
+        </div>
+        <div class="menu-item" data-action="add-waypoint">
+            <i class="fas fa-map-pin"></i>
+            <span data-i18n="menu.add_waypoint">Add Waypoint</span>
+        </div>
+        <div class="menu-separator"></div>
+        <div class="menu-item" data-action="screenshot">
+            <i class="fas fa-camera"></i>
+            <span data-i18n="menu.screenshot">Take Screenshot</span>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Core Application Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/language-manager.js"></script>
+    <script src="js/data-source-manager.js"></script>
+    <script src="js/threat-detection.js"></script>
+    <script src="js/gps-security.js"></script>
+    <script src="js/map-controller.js"></script>
+    <script src="js/globe-3d.js"></script>
+    <script src="js/notification-manager.js"></script>
+    <script src="js/aircraft-manager.js"></script>
+    <script src="js/ui-controller.js"></script>
+    <script src="js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(registrationError => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>

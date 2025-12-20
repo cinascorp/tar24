@@ -238,7 +238,7 @@
 		style="display:none; 
 		margin-top: 10px; 
 		text-align: center;">
-			<iframe id="aircraft-frame" style="width: 100%; height: 240px; border-radius: 5px; border: 0;" title="Aircraft photo gallery" href="https://www.planespotting.be/index.php?page=" >
+			<iframe id="aircraft-frame" style="width: 100%; height: 240px; border-radius: 5px; border: 0;" title="Aircraft photo gallery">
 			</iframe>
 			<div id="aircraft-links" style="margin-top: 5px;"></div>
 		</div>
@@ -977,10 +977,11 @@
 			return `https://premium.flightradar24.com/${flightPart}/${idPart}/3d`;
 		}
 
-		function getAircraftGalleryUrl(f) {
-			if (!f.acType) return null;
-			return `https://planespotting.be/${encodeURIComponent(f.acType)}`;
-		}
+			function getAircraftGalleryUrl(f) {
+		if (!f.acType) return null;
+		// Fixed URL to point to specific aircraft photos instead of main page
+		return `https://www.jetphotos.com/showphotos.php?aircraft=${encodeURIComponent(f.acType)}`;
+	}
 
 		function showAircraftGallery(f, url) {
 			if (!url) { aircraftImageContainer.style.display = 'none'; return; }

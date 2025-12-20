@@ -12,6 +12,15 @@
     "format": "prettier --write js/*.js *.html *.css",
     "serve": "python3 -m http.server 8080",
     "serve-python2": "python -m SimpleHTTPServer 8080"
+  "description": "Advanced military-grade flight tracking and analysis system for C4ISR operations",
+  "main": "c4isr-v2.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000",
+    "test": "echo \"No tests specified\" && exit 0",
+    "build": "echo \"No build process required\" && exit 0",
+    "lint": "echo \"No linting configured\" && exit 0"
   },
   "keywords": [
     "c4isr",
@@ -49,6 +58,20 @@
     "url": "https://github.com/c4isr-system/military-tracking-v2/issues"
   },
   "homepage": "https://c4isr-system.com",
+    "defense",
+    "surveillance",
+    "intelligence"
+  ],
+  "author": "C4ISR Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/c4isr-military-tracking-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/c4isr-military-tracking-system/issues"
+  },
+  "homepage": "https://github.com/your-org/c4isr-military-tracking-system#readme",
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
@@ -74,6 +97,29 @@
     "js/",
     "styles/",
     "README*.md",
+  "dependencies": {},
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "peerDependencies": {},
+  "bundledDependencies": [],
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "c4isr-v2.html",
+    "js/",
+    "styles/",
+    "README-v2.md",
     "LICENSE"
   ],
   "directories": {
@@ -110,5 +156,20 @@
   },
   "security": {
     "disclosure": "This system is designed for military and defense applications. Users are responsible for compliance with local laws and regulations regarding GPS jamming, surveillance, and military operations."
+    "port": 8000,
+    "host": "localhost"
+  },
+  "preferGlobal": false,
+  "bin": {},
+  "man": [],
+  "contributors": [
+    {
+      "name": "C4ISR Development Team",
+      "email": "dev@c4isr-system.com"
+    }
+  ],
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/your-org"
   }
 }
